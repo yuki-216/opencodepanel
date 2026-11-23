@@ -1,0 +1,2169 @@
+<!doctype html>
+<html lang="zh-CN" data-zcode-design>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#08090a">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src https://opencode.ai; img-src data:; base-uri 'none'; form-action 'none'">
+  <title>OCG · 配额总览</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2308090a'/%3E%3Cpath d='M8 11h16M8 16h11M8 21h7' stroke='%23c8f26a' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #08090a;
+      --bg-2: #0b0d10;
+      --surface: rgba(255, 255, 255, 0.025);
+      --surface-2: rgba(255, 255, 255, 0.045);
+      --surface-3: rgba(255, 255, 255, 0.075);
+      --fg: #f2f3f5;
+      --fg-2: #c3c7ce;
+      --muted: #9298a2;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-2: rgba(255, 255, 255, 0.13);
+      --border-strong: #5a606a;
+      --accent: #c8f26a;
+      --accent-2: #d8ff87;
+      --accent-fg: #0a0c08;
+      --ok: #63e6a8;
+      --warn: #f0b44c;
+      --danger: #ff6b6b;
+      --ok-bg: rgba(99, 230, 168, 0.08);
+      --ok-border: rgba(99, 230, 168, 0.24);
+      --warn-bg: rgba(240, 180, 76, 0.08);
+      --warn-border: rgba(240, 180, 76, 0.26);
+      --danger-bg: rgba(255, 107, 107, 0.08);
+      --danger-border: rgba(255, 107, 107, 0.28);
+      --grid-line: rgba(255, 255, 255, 0.022);
+      --page-glow: rgba(255, 255, 255, 0.05);
+      --scanline: rgba(255, 255, 255, 0.28);
+      --focus-halo: rgba(255, 255, 255, 0.10);
+      --shadow-card: 0 30px 80px rgba(0, 0, 0, 0.35);
+      --shadow-pop: 0 20px 50px rgba(0, 0, 0, 0.50);
+      --chart-grid: rgba(255, 255, 255, 0.06);
+      --chart-limit: rgba(255, 255, 255, 0.16);
+      --chart-fill: rgba(255, 255, 255, 0.035);
+      --chart-now: rgba(255, 255, 255, 0.30);
+      --radius-sm: 6px;
+      --radius: 10px;
+      --radius-lg: 14px;
+      --font-sans: "Inter", "Segoe UI Variable Display", "Segoe UI", "Microsoft YaHei UI", "PingFang SC", system-ui, sans-serif;
+      --font-mono: "Berkeley Mono", "Cascadia Mono", "Cascadia Code", "SF Mono", "Consolas", ui-monospace, monospace;
+      --maxw: 1180px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      background-color: var(--bg);
+      background-image:
+        radial-gradient(1000px 520px at 50% -12%, var(--page-glow), transparent 70%),
+        linear-gradient(var(--grid-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+      background-size: auto, 48px 48px, 48px 48px;
+      color: var(--fg);
+      font-family: var(--font-sans);
+      font-size: 15px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0 0 auto;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--scanline), transparent);
+      z-index: 50;
+      pointer-events: none;
+    }
+    ::selection { background: var(--accent); color: var(--accent-fg); }
+    h1, h2, h3, p { margin: 0; }
+    h1, h2, h3 { font-weight: 500; letter-spacing: -0.02em; }
+    a { color: inherit; }
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+    }
+    .sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+    .icon {
+      width: 16px; height: 16px; flex: none; display: inline-block; vertical-align: middle;
+      fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+    }
+    .icon--sm { width: 14px; height: 14px; }
+    .icon--lg { width: 18px; height: 18px; }
+    .noscript { padding: 24px; color: var(--fg-2); font-size: 14px; text-align: center; }
+    .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.4;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex: none; }
+
+    /* Buttons and form controls */
+    button, input { font: inherit; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      min-height: 42px; padding: 0 16px; border-radius: var(--radius-sm);
+      border: 1px solid transparent; cursor: pointer; font-size: 14px; font-weight: 500;
+      letter-spacing: 0.01em; text-decoration: none; white-space: nowrap;
+      transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, transform 150ms ease;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+    .btn:disabled:active { transform: none; }
+    .btn-primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+    .btn-primary:hover:not(:disabled) { background: var(--accent-2); border-color: var(--accent-2); }
+    .btn-ghost { background: transparent; color: var(--fg-2); border-color: var(--border-2); }
+    .btn-ghost:hover:not(:disabled) { background: var(--surface); color: var(--fg); border-color: var(--border-strong); }
+    .icon-btn {
+      width: 36px; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
+      border-radius: var(--radius-sm); border: 1px solid transparent; background: transparent;
+      color: var(--muted); cursor: pointer; transition: background-color 150ms ease, color 150ms ease;
+    }
+    .icon-btn:hover { color: var(--fg); background: var(--surface-2); }
+    .icon-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    :focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+    .icon-arrow { transition: transform 150ms ease; }
+    .btn-primary:hover .icon-arrow { transform: translateX(2px); }
+
+    /* Top bar */
+    .topbar {
+      position: sticky; top: 0; z-index: 20;
+      background: rgba(8, 9, 10, 0.82);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+    }
+    .topbar-inner {
+      width: min(var(--maxw), calc(100% - 48px)); margin: 0 auto; height: 56px;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .brand-mark { width: 20px; height: 20px; color: var(--fg); flex: none; }
+    .brand-dot { stroke: var(--accent); }
+    .brand-name { font-family: var(--font-mono); font-size: 13px; font-weight: 600; letter-spacing: 0.10em; }
+    .brand-div { width: 1px; height: 16px; background: var(--border-2); flex: none; }
+    .topbar-title { font-size: 13px; color: var(--fg-2); white-space: nowrap; }
+    .topbar-right { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .conn { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+    .conn .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+    .conn--live { color: var(--fg-2); }
+    .conn--live .dot { background: var(--ok); box-shadow: 0 0 0 3px var(--ok-bg); }
+    .conn--demo { color: var(--fg-2); }
+    .conn--demo .dot { background: var(--warn); box-shadow: 0 0 0 3px var(--warn-bg); }
+    .conn--error { color: var(--danger); }
+    .conn--error .dot { background: var(--danger); box-shadow: 0 0 0 3px var(--danger-bg); }
+    .sync {
+      font-family: var(--font-mono); font-size: 12px; color: var(--muted);
+      min-width: 92px; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums;
+    }
+    .menu { position: relative; }
+    .menu summary { list-style: none; }
+    .menu summary::-webkit-details-marker { display: none; }
+    .menu[open] > summary { background: var(--surface-2); color: var(--fg); }
+    .menu-pop {
+      position: absolute; right: 0; top: calc(100% + 8px); width: 224px;
+      background: var(--bg-2); border: 1px solid var(--border-2); border-radius: var(--radius);
+      box-shadow: var(--shadow-pop); padding: 6px; z-index: 30;
+    }
+    .menu-pop button, .menu-pop a {
+      display: flex; align-items: center; gap: 9px; width: 100%; min-height: 36px;
+      padding: 0 9px; border: 0; border-radius: var(--radius-sm); background: transparent;
+      color: var(--fg-2); font-size: 12px; text-align: left; text-decoration: none; cursor: pointer;
+    }
+    .menu-pop a { justify-content: space-between; }
+    .menu-pop button:hover, .menu-pop a:hover { background: var(--surface-2); color: var(--fg); }
+    .menu-pop .menu-danger { color: var(--danger); }
+    .menu-pop .menu-danger:hover { background: var(--danger-bg); color: var(--danger); }
+    .menu-sep { height: 1px; background: var(--border); margin: 5px 2px; }
+
+    /* Layout */
+    .dash-wrap { width: min(var(--maxw), calc(100% - 48px)); margin: 0 auto; padding: 24px 0 40px; }
+
+    /* Setup */
+    .setup {
+      width: min(1120px, calc(100% - 48px)); min-height: 100vh; margin: 0 auto;
+      padding: 28px 0 24px; display: flex; flex-direction: column;
+    }
+    .setup-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .setup-top-note { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--muted); }
+    .setup-grid {
+      flex: 1; display: grid; grid-template-columns: 1.05fr 0.95fr;
+      gap: clamp(40px, 7vw, 96px); align-items: center; padding: 48px 0;
+    }
+    .setup-intro { max-width: 560px; }
+    .setup-intro .eyebrow { margin-bottom: 18px; }
+    .setup-intro h1 {
+      font-size: clamp(38px, 5.2vw, 64px); line-height: 1.04; letter-spacing: -0.03em;
+      font-weight: 500; text-wrap: balance;
+    }
+    .lede { margin-top: 18px; font-size: 15px; line-height: 1.65; color: var(--fg-2); max-width: 48ch; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 9px;
+      margin-top: 20px; border: 1px solid var(--border); border-radius: 999px;
+      font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .badge .dot { width: 4px; height: 4px; background: var(--ok); }
+    .horizon-list { margin-top: 30px; border-top: 1px solid var(--border); }
+    .horizon-row {
+      display: grid; grid-template-columns: 64px 1fr auto; align-items: baseline;
+      gap: 14px; padding: 13px 0; border-bottom: 1px solid var(--border);
+    }
+    .h-code { font-family: var(--font-mono); font-size: 30px; line-height: 1; letter-spacing: -0.02em; color: var(--fg); }
+    .h-name { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+    .h-name span { font-size: 12px; color: var(--fg-2); white-space: nowrap; }
+    .h-cap { font-family: var(--font-mono); font-size: 12px; color: var(--muted); white-space: nowrap; }
+    .h-cap strong { color: var(--fg-2); font-weight: 500; }
+    .setup-note { margin-top: 14px; font-size: 12px; line-height: 1.6; color: var(--muted); max-width: 42ch; }
+
+    .setup-card {
+      width: 100%; max-width: 480px; justify-self: end;
+      background: var(--surface); border: 1px solid var(--border-2); border-radius: var(--radius-lg);
+      padding: 26px; box-shadow: var(--shadow-card);
+      display: flex; flex-direction: column; gap: 18px;
+    }
+    .setup-card .eyebrow { margin-bottom: 4px; }
+    .setup-card h2 { font-size: 22px; line-height: 1.2; letter-spacing: -0.02em; }
+    .field { display: flex; flex-direction: column; gap: 8px; }
+    .label-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .label-row label { font-size: 12px; font-weight: 500; letter-spacing: 0.02em; color: var(--fg-2); }
+    .link {
+      display: inline-flex; align-items: center; gap: 4px; min-height: 24px; color: var(--muted);
+      text-decoration: none; font-size: 12px; border-bottom: 1px solid transparent;
+    }
+    .link:hover { color: var(--fg); border-bottom-color: var(--border-2); }
+    .input-wrap {
+      display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 10px;
+      background: var(--bg-2); border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+      transition: border-color 150ms ease, box-shadow 150ms ease;
+    }
+    .input-wrap:focus-within { border-color: var(--fg); box-shadow: 0 0 0 3px var(--focus-halo); }
+    .input-wrap > .icon { color: var(--muted); }
+    .input-wrap input {
+      flex: 1; min-width: 0; padding: 12px 0; border: 0; outline: 0;
+      background: transparent; color: var(--fg); font-family: var(--font-mono);
+      font-size: 14px; letter-spacing: 0.02em;
+    }
+    .input-wrap input::placeholder { color: var(--muted); }
+    .input-wrap .icon-btn { width: 30px; height: 30px; margin-right: -4px; }
+    .hint { font-size: 12px; line-height: 1.5; color: var(--muted); }
+    .error { font-size: 12px; line-height: 1.6; color: var(--danger); }
+    .error:empty { display: none; }
+    .error summary { margin-top: 6px; cursor: pointer; color: var(--danger); font-size: 11px; }
+    .banner summary { margin-top: 6px; cursor: pointer; color: var(--muted); font-size: 11px; }
+    .error pre, .banner pre {
+      margin: 8px 0 0; padding: 10px; max-height: 180px; overflow: auto;
+      white-space: pre-wrap; word-break: break-word;
+      background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      font-family: var(--font-mono); font-size: 10px; line-height: 1.5; color: var(--fg-2);
+    }
+
+    .check { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; cursor: pointer; }
+    .check input { width: 24px; height: 24px; margin: 0; accent-color: var(--accent); }
+    .check-text { display: flex; flex-direction: column; gap: 2px; }
+    .check-text strong { font-size: 12px; font-weight: 500; color: var(--fg-2); }
+    .check-text span { font-size: 12px; line-height: 1.5; color: var(--muted); }
+    .check input:disabled + .check-text strong { color: var(--muted); }
+
+    .form-actions { display: flex; flex-direction: column; gap: 10px; }
+    .spinner { display: none; }
+    .is-busy .spinner { display: inline-block; }
+    .is-busy .icon-arrow { display: none; }
+
+    .privacy { display: flex; flex-direction: column; gap: 8px; padding-top: 15px; border-top: 1px solid var(--border); }
+    .privacy-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+    .privacy-row .icon { color: var(--ok); }
+    .fineprint { font-size: 12px; line-height: 1.6; color: var(--muted); }
+    .fineprint code { font-family: var(--font-mono); font-size: 12px; color: var(--fg-2); }
+    .setup-foot {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      padding-top: 18px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted);
+    }
+
+    /* Dashboard summary */
+    .banner {
+      display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px;
+      margin-bottom: 18px; border: 1px solid var(--warn-border); border-radius: var(--radius-sm);
+      background: var(--warn-bg); color: var(--fg-2);
+    }
+    .banner--danger { border-color: var(--danger-border); background: var(--danger-bg); }
+    .banner > .icon { margin-top: 1px; color: var(--warn); }
+    .banner--danger > .icon { color: var(--danger); }
+    .banner-body { flex: 1; min-width: 0; font-size: 12px; line-height: 1.6; }
+    .banner-body strong { color: var(--fg); font-weight: 500; }
+    .banner-actions { display: flex; align-items: center; gap: 6px; flex: none; }
+    .banner-retry {
+      min-height: 30px; padding: 0 10px; border: 1px solid var(--border-2);
+      border-radius: var(--radius-sm); background: transparent; color: var(--fg-2);
+      font-size: 11px; cursor: pointer;
+    }
+    .banner-retry:hover { background: var(--surface-2); color: var(--fg); }
+
+    .summary {
+      padding: 22px 0 28px; border-bottom: 1px solid var(--border);
+    }
+    .summary .eyebrow { display: flex; align-items: center; gap: 7px; margin-bottom: 10px; }
+    .verdict-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); flex: none; }
+    .verdict-dot--safe { background: var(--ok); }
+    .verdict-dot--warn { background: var(--warn); }
+    .verdict-dot--danger { background: var(--danger); }
+    .verdict-dot--idle { background: var(--muted); }
+    .verdict {
+      font-size: clamp(20px, 2.2vw, 26px); line-height: 1.35; letter-spacing: -0.02em;
+      color: var(--fg); max-width: 62ch; text-wrap: pretty;
+    }
+    .verdict strong { font-weight: 600; color: var(--fg); }
+    .summary-sub { margin-top: 10px; font-size: 12px; line-height: 1.6; color: var(--muted); max-width: 60ch; }
+
+    .section { padding: 28px 0; border-bottom: 1px solid var(--border); }
+    .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; margin-bottom: 18px; }
+    .section-head h2 { font-size: 15px; font-weight: 500; letter-spacing: 0.01em; }
+    .section-head p { font-size: 12px; line-height: 1.6; color: var(--muted); max-width: 64ch; text-align: right; }
+
+    /* Window cards */
+    .windows { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    .window-card {
+      display: flex; flex-direction: column; min-width: 0; padding: 16px 16px 14px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    }
+    .win-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .win-label { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+    .win-code { font-family: var(--font-mono); font-size: 13px; font-weight: 600; letter-spacing: 0.08em; color: var(--fg); }
+    .win-name { font-size: 12px; color: var(--muted); white-space: nowrap; }
+    .status {
+      display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px;
+      border-radius: 999px; border: 1px solid var(--border); white-space: nowrap;
+      font-size: 12px; font-weight: 500; letter-spacing: 0.02em;
+    }
+    .status .dot { width: 5px; height: 5px; background: currentColor; }
+    .status--safe { color: var(--ok); background: var(--ok-bg); border-color: var(--ok-border); }
+    .status--tight { color: var(--warn); background: var(--warn-bg); border-color: var(--warn-border); }
+    .status--danger { color: var(--danger); background: var(--danger-bg); border-color: var(--danger-border); }
+    .status--idle { color: var(--muted); background: var(--surface); border-color: var(--border); }
+
+    .win-pct { display: flex; align-items: baseline; gap: 4px; margin-top: 12px; }
+    .win-pct .num { font-family: var(--font-mono); font-size: clamp(40px, 4vw, 56px); line-height: 1; font-weight: 500; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+    .win-pct .unit { font-family: var(--font-mono); font-size: 17px; color: var(--muted); }
+    .win-note { margin-top: 6px; font-size: 12px; color: var(--muted); }
+    .win-chart { margin: 10px -4px 0; }
+    .win-chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+    .win-foot {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+      margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border);
+    }
+    .metric { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+    .metric--right { text-align: right; }
+    .metric .k { font-size: 12px; color: var(--muted); letter-spacing: 0.02em; }
+    .metric .v { font-family: var(--font-mono); font-size: 13px; line-height: 1.2; color: var(--fg); font-variant-numeric: tabular-nums; }
+    .metric .v--danger { color: var(--danger); }
+    .metric .v--warn { color: var(--warn); }
+    .metric .v--muted { color: var(--muted); }
+    .reset-abs { font-family: var(--font-mono); font-size: 12px; color: var(--muted); white-space: nowrap; }
+
+    /* Chart primitives */
+    .c-grid { stroke: var(--chart-grid); stroke-width: 1; }
+    .c-limit { stroke: var(--chart-limit); stroke-width: 1; stroke-dasharray: 3 4; }
+    .c-actual { fill: none; stroke: var(--fg); stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+    .c-area { fill: var(--chart-fill); }
+    .c-proj { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 4 4; stroke-linecap: round; }
+    .c-proj--warn { stroke: var(--warn); }
+    .c-proj--danger { stroke: var(--danger); }
+    .c-now { stroke: var(--chart-now); stroke-width: 1; }
+    .c-now-dot { fill: var(--fg); }
+    .c-hit { stroke: var(--danger); stroke-width: 1; stroke-dasharray: 2 3; }
+    .c-hit-dot { fill: var(--danger); }
+    .c-axis { fill: var(--muted); font-family: var(--font-mono); font-size: 12px; }
+    .c-axis--strong { fill: var(--fg-2); }
+    .c-hit-label { fill: var(--danger); font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.04em; }
+
+    /* Window conversion */
+    .conv-list { display: flex; flex-direction: column; gap: 10px; }
+    .conv {
+      padding: 14px 16px 12px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    }
+    .conv-head {
+      display: flex; align-items: baseline; justify-content: space-between;
+      flex-wrap: wrap; gap: 8px 18px; margin-bottom: 12px;
+    }
+    .conv-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; min-width: 0; }
+    .conv-code { font-family: var(--font-mono); font-size: 13px; font-weight: 600; letter-spacing: 0.08em; color: var(--fg); }
+    .conv-name { font-size: 12px; color: var(--fg-2); white-space: nowrap; }
+    .conv-src { font-family: var(--font-mono); font-size: 12px; color: var(--muted); white-space: nowrap; }
+    .conv-nums { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px 16px; }
+    .conv-num {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--muted); white-space: nowrap;
+    }
+    .conv-num b {
+      font-family: var(--font-mono); font-size: 13px; font-weight: 500;
+      color: var(--fg); font-variant-numeric: tabular-nums;
+    }
+    .conv-num .flag { color: var(--danger); font-size: 12px; }
+    .conv-swatch { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+    .conv-swatch--used { background: var(--fg-2); }
+    .conv-swatch--proj { background: var(--accent); }
+    .conv-swatch--rest { background: var(--surface-3); border: 1px solid var(--border-2); }
+
+    .conv-rows { display: flex; flex-direction: column; gap: 10px; }
+    .conv-row { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; align-items: start; }
+    .conv-k { padding-top: 1px; font-size: 12px; line-height: 1.3; color: var(--muted); }
+    .conv-axis { min-width: 0; }
+    .conv-track { position: relative; border-radius: 999px; }
+    .conv-track--time { height: 4px; background: var(--surface-3); }
+    .conv-timefill { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: var(--border-strong); }
+    .conv-now { position: absolute; top: -3px; bottom: -3px; width: 1px; background: var(--fg); transform: translateX(-50%); }
+    .conv-now::after {
+      content: ""; position: absolute; top: -2px; left: -2px;
+      width: 5px; height: 5px; border-radius: 50%; background: var(--fg);
+    }
+    .conv-track--use {
+      height: 10px; margin-top: 1px; overflow: hidden;
+      background: var(--bg-2); border: 1px solid var(--border);
+    }
+    .conv-seg { position: absolute; top: 0; bottom: 0; }
+    .conv-seg--used { background: var(--fg-2); }
+    .conv-seg--proj { background: var(--accent); }
+    .conv-seg--rest { background: var(--surface-3); }
+    .conv-scale {
+      display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px;
+      margin-top: 6px; font-family: var(--font-mono); font-size: 12px; line-height: 1.4;
+      color: var(--muted); font-variant-numeric: tabular-nums;
+    }
+    .conv-scale span { white-space: nowrap; }
+    .conv-scale span:nth-child(2) { text-align: center; }
+    .conv-scale span:nth-child(3) { text-align: right; }
+    .conv-scale--ends { display: flex; justify-content: space-between; }
+
+    .dash-foot {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 18px;
+      margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--border);
+      font-size: 12px; color: var(--muted);
+    }
+    .foot-group { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .dash-foot a { display: inline-flex; align-items: center; min-height: 24px; color: var(--muted); text-decoration: none; border-bottom: 1px solid var(--border); }
+    .dash-foot a:hover { color: var(--fg-2); }
+    .dash-foot kbd {
+      font-family: var(--font-mono); font-size: 12px; padding: 1px 5px;
+      border: 1px solid var(--border-2); border-radius: 3px; color: var(--fg-2);
+    }
+    .demo-note { color: var(--warn); }
+    .lock-note { display: inline-flex; align-items: center; gap: 5px; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { animation: spin 900ms linear infinite; transform-origin: center; }
+
+    /* Responsive */
+    @media (max-width: 1080px) {
+      .windows { gap: 10px; }
+      .window-card { padding: 14px 14px 12px; }
+    }
+    @media (max-width: 900px) {
+      .setup { width: calc(100% - 36px); }
+      .setup-grid { grid-template-columns: 1fr; gap: 36px; padding: 32px 0; align-items: start; align-content: start; }
+      .setup-intro { max-width: none; }
+      .setup-intro h1 { font-size: clamp(36px, 8vw, 52px); }
+      .setup-card { justify-self: stretch; max-width: none; }
+      .windows { grid-template-columns: 1fr; }
+      .window-card { padding: 18px 18px 14px; }
+      .win-name { display: inline; }
+      .win-pct .num { font-size: 52px; }
+    }
+    @media (max-width: 700px) {
+      .topbar-inner, .dash-wrap { width: calc(100% - 36px); }
+      .sync, .topbar-title, .brand-div { display: none; }
+      .section-head { flex-direction: column; align-items: flex-start; gap: 6px; }
+      .section-head p { text-align: left; }
+      .conv { padding: 13px 14px 11px; }
+      .conv-head { gap: 6px 14px; }
+      .conv-nums { gap: 4px 12px; }
+      .setup-foot { flex-direction: column; align-items: flex-start; gap: 8px; }
+    }
+    @media (max-width: 480px) {
+      .setup { width: calc(100% - 36px); padding-top: 20px; }
+      .setup-card { padding: 20px; }
+      .setup-top-note { display: none; }
+      .win-pct .num { font-size: 46px; }
+      .form-actions .btn { width: 100%; }
+      .horizon-row { grid-template-columns: 52px 1fr auto; gap: 10px; }
+      .h-code { font-size: 26px; }
+      .h-name span { font-size: 12px; }
+      .h-cap { font-size: 12px; }
+      .conv-row { grid-template-columns: 30px minmax(0, 1fr); gap: 8px; }
+      .conv-scale { gap: 6px; }
+      .summary { padding-top: 18px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <svg class="sprite" aria-hidden="true" focusable="false">
+    <symbol id="i-key" viewBox="0 0 24 24">
+      <circle cx="8" cy="12" r="3.5"/>
+      <path d="M11.5 12H21M17 12v3M20 12v2.5"/>
+    </symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24">
+      <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6S2.5 12 2.5 12Z"/>
+      <circle cx="12" cy="12" r="2.8"/>
+    </symbol>
+    <symbol id="i-eye-off" viewBox="0 0 24 24">
+      <path d="m3 3 18 18"/>
+      <path d="M10.6 6.2A10.9 10.9 0 0 1 12 6c6 0 9.5 6 9.5 6a17 17 0 0 1-3.1 3.8M6.6 6.7C4 8.5 2.5 12 2.5 12s3.5 6 9.5 6a10.6 10.6 0 0 0 4.2-.9"/>
+      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>
+    </symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24">
+      <path d="M20 11a8 8 0 1 0-2.3 5.7"/>
+      <path d="M20 4v7h-7"/>
+    </symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24">
+      <path d="M5 12h13M13 6l6 6-6 6"/>
+    </symbol>
+    <symbol id="i-external" viewBox="0 0 24 24">
+      <path d="M14 5h5v5M19 5l-8 8"/>
+      <path d="M18 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4"/>
+    </symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24">
+      <path d="M12 3 5 6v5c0 4.4 3 7.4 7 9 4-1.6 7-4.6 7-9V6l-7-3Z"/>
+      <path d="m9 12 2 2 4-4"/>
+    </symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24">
+      <rect x="5" y="10" width="14" height="10" rx="2"/>
+      <path d="M8 10V7a4 4 0 0 1 8 0v3"/>
+    </symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24">
+      <path d="M12 4 2.8 20h18.4L12 4Z"/>
+      <path d="M12 9v5M12 17h.01"/>
+    </symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24">
+      <path d="M10 5H6a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h4"/>
+      <path d="M14 8l4 4-4 4M18 12H9"/>
+    </symbol>
+    <symbol id="i-dots" viewBox="0 0 24 24">
+      <circle cx="5" cy="12" r="1" fill="currentColor" stroke="none"/>
+      <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/>
+      <circle cx="19" cy="12" r="1" fill="currentColor" stroke="none"/>
+    </symbol>
+    <symbol id="i-doc" viewBox="0 0 24 24">
+      <path d="M7 3h7l4 4v14H7V3Z"/>
+      <path d="M14 3v4h4M10 12h5M10 16h5"/>
+    </symbol>
+    <symbol id="i-check" viewBox="0 0 24 24">
+      <path d="m5 12 4.5 4.5L19 7"/>
+    </symbol>
+    <symbol id="i-spinner" viewBox="0 0 24 24">
+      <path d="M21 12a9 9 0 1 1-6.2-8.6"/>
+    </symbol>
+  </svg>
+
+  <header class="topbar" id="topbar" hidden data-od-id="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none">
+          <rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M7.5 9.5h9M7.5 12h6.5M7.5 14.5h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <path class="brand-dot" d="M16.5 16.5h1.5" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <span class="brand-name" lang="en">OCG</span>
+        <span class="brand-div" aria-hidden="true"></span>
+        <span class="topbar-title">配额总览</span>
+      </div>
+      <div class="topbar-right">
+        <span class="conn conn--live" id="connState"><span class="dot"></span><span id="connLabel">已连接</span></span>
+        <span class="sync" id="lastSync">刚刚同步</span>
+        <button class="icon-btn" id="refreshBtn" type="button" aria-label="立即刷新" title="刷新（R）">
+          <svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg>
+        </button>
+        <details class="menu" id="menu">
+          <summary class="icon-btn" aria-label="更多操作" title="更多操作">
+            <svg class="icon" aria-hidden="true"><use href="#i-dots"/></svg>
+          </summary>
+          <div class="menu-pop">
+            <a href="https://opencode.ai/docs/console/go/#usage" target="_blank" rel="noreferrer">
+              <span>API 文档</span><svg class="icon icon--sm" aria-hidden="true"><use href="#i-external"/></svg>
+            </a>
+            <div class="menu-sep"></div>
+            <button type="button" class="menu-danger" id="disconnectBtn">
+              <svg class="icon icon--sm" aria-hidden="true"><use href="#i-logout"/></svg>
+              <span id="disconnectLabel">断开并清除 key</span>
+            </button>
+          </div>
+        </details>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="setup" id="setup" aria-labelledby="setupTitle" data-od-id="setup">
+      <div class="setup-top">
+        <div class="brand">
+          <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none">
+            <rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M7.5 9.5h9M7.5 12h6.5M7.5 14.5h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <path class="brand-dot" d="M16.5 16.5h1.5" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <span class="brand-name" lang="en">OCG</span>
+          <span class="brand-div" aria-hidden="true"></span>
+          <span class="topbar-title">QUOTA DECK</span>
+        </div>
+        <span class="setup-top-note" lang="en">OPENCODE GO · USAGE</span>
+      </div>
+
+      <div class="setup-grid">
+        <div class="setup-intro" data-od-id="setup-intro">
+          <p class="eyebrow" lang="en">THREE HORIZONS</p>
+          <h1 id="setupTitle">连接你的配额</h1>
+          <p class="lede">输入 API key，查看三个窗口的当前用量与重置时预估。</p>
+          <span class="badge"><span class="dot"></span> CORS 直连</span>
+          <div class="horizon-list" aria-label="三个额度窗口">
+            <div class="horizon-row">
+              <span class="h-code">5H</span>
+              <span class="h-name"><span>滚动窗口</span></span>
+              <span class="h-cap">上限 <strong>20%</strong> 月额度</span>
+            </div>
+            <div class="horizon-row">
+              <span class="h-code">7D</span>
+              <span class="h-name"><span>每周</span></span>
+              <span class="h-cap">上限 <strong>50%</strong> 月额度</span>
+            </div>
+            <div class="horizon-row">
+              <span class="h-code">1M</span>
+              <span class="h-name"><span>每月</span></span>
+              <span class="h-cap">上限 <strong>100%</strong> 月额度</span>
+            </div>
+          </div>
+          <p class="setup-note">三个窗口共用一个月度额度。</p>
+        </div>
+
+        <form class="setup-card" id="connectForm" novalidate data-od-id="connect-form">
+          <div>
+            <p class="eyebrow" lang="en">CONNECT</p>
+            <h2>输入你的 API key</h2>
+          </div>
+          <div class="field">
+            <div class="label-row">
+              <label for="apiKey">API Key</label>
+              <a class="link" href="https://opencode.ai/console" target="_blank" rel="noreferrer">在 Console 创建 <svg class="icon icon--sm" aria-hidden="true"><use href="#i-external"/></svg></a>
+            </div>
+            <div class="input-wrap">
+              <svg class="icon" aria-hidden="true"><use href="#i-key"/></svg>
+              <input id="apiKey" name="apiKey" type="password" placeholder="oc_sk_..." autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="200" aria-describedby="keyHint setupError" required>
+              <button class="icon-btn" id="toggleKey" type="button" aria-label="显示 key" aria-pressed="false" title="显示 key">
+                <svg class="icon" aria-hidden="true"><use href="#i-eye"/></svg>
+              </button>
+            </div>
+            <p class="hint" id="keyHint">通常以 oc_ 开头。</p>
+            <div class="error" id="setupError" role="alert"></div>
+          </div>
+          <label class="check" for="remember">
+            <input id="remember" name="remember" type="checkbox" checked>
+            <span class="check-text"><strong>在此浏览器记住</strong><span id="rememberHint">localStorage；不勾选则只保留到关闭页面</span></span>
+          </label>
+          <div class="form-actions">
+            <button class="btn btn-primary" id="connectBtn" type="submit">
+              <span class="btn-label">连接并读取</span>
+              <svg class="icon icon-arrow" aria-hidden="true"><use href="#i-arrow"/></svg>
+              <svg class="icon spinner spin" aria-hidden="true"><use href="#i-spinner"/></svg>
+            </button>
+            <button class="btn btn-ghost" id="demoBtn" type="button">用演示数据预览</button>
+          </div>
+          <p class="sr-only" id="connectStatus" role="status"></p>
+          <div class="privacy">
+            <div class="privacy-row"><svg class="icon icon--sm" aria-hidden="true"><use href="#i-lock"/></svg><span>key 只保存在本机浏览器</span></div>
+            <div class="privacy-row"><svg class="icon icon--sm" aria-hidden="true"><use href="#i-shield"/></svg><span>只发送到 opencode.ai 的 usage 接口</span></div>
+            <div class="privacy-row"><svg class="icon icon--sm" aria-hidden="true"><use href="#i-check"/></svg><span>无第三方脚本 · 无中转</span></div>
+          </div>
+          <p class="fineprint">浏览器存储可被同 origin 的脚本读取；共用设备请取消“记住”。</p>
+        </form>
+      </div>
+
+      <footer class="setup-foot" data-od-id="setup-footer">
+        <span>OpenCode Go · 配额仪表盘</span>
+        <span>数据接口：<a class="link" href="https://opencode.ai/docs/console/go/#usage" target="_blank" rel="noreferrer">usage endpoint</a></span>
+      </footer>
+    </section>
+
+    <section class="dashboard" id="dashboard" hidden aria-labelledby="dashTitle" data-od-id="dashboard">
+      <h1 class="sr-only" id="dashTitle" tabindex="-1">OpenCode Go 配额总览</h1>
+      <div class="dash-wrap">
+        <div class="banner" id="banner" role="alert" hidden data-od-id="banner">
+          <svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg>
+          <div class="banner-body" id="bannerBody"></div>
+          <div class="banner-actions"><button class="banner-retry" id="bannerRetry" type="button">重试</button></div>
+        </div>
+
+        <section class="summary" aria-labelledby="summaryTitle" data-od-id="summary">
+          <div class="summary-copy">
+            <h2 class="eyebrow" id="summaryTitle"><span class="verdict-dot verdict-dot--idle" id="verdictDot"></span>当前判断</h2>
+            <p class="verdict" id="verdict"></p>
+            <p class="summary-sub" id="summarySub"></p>
+          </div>
+        </section>
+
+        <section class="section" aria-labelledby="windowsTitle" data-od-id="windows">
+          <div class="section-head">
+            <h2 id="windowsTitle">三个窗口</h2>
+            <p>实线为本地采样（每窗口 30 个等距节点），虚线按本窗口平均速度外推；月度按账单月估算。</p>
+          </div>
+          <div class="windows" id="windows"></div>
+        </section>
+
+        <section class="section" aria-labelledby="convTitle" data-od-id="conversion">
+          <div class="section-head">
+            <h2 id="convTitle">窗口折算</h2>
+            <p>以本窗口已用为底，叠加更短窗口按当前速度的剩余预估；超出上限截断。</p>
+          </div>
+          <div class="conv-list" id="convRows"></div>
+        </section>
+
+        <footer class="dash-foot" data-od-id="dashboard-footer">
+          <div class="foot-group">
+            <span>数据：<a href="https://opencode.ai/docs/console/go/#usage" target="_blank" rel="noreferrer">OpenCode Go usage API</a></span>
+            <span id="refreshNote">每 60 秒自动刷新</span>
+            <span>按 <kbd>R</kbd> 刷新</span>
+          </div>
+          <div class="foot-group">
+            <span class="lock-note"><svg class="icon icon--sm" aria-hidden="true"><use href="#i-lock"/></svg>key 仅存本机</span>
+            <span id="demoNote" class="demo-note" hidden>演示数据，非真实用量</span>
+          </div>
+        </footer>
+      </div>
+    </section>
+  </main>
+
+  <noscript><p class="noscript">这个仪表盘需要 JavaScript。key 只会在你的浏览器里使用。</p></noscript>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const API_URL = 'https://opencode.ai/inference/go/v1/usage';
+      const REFRESH_MS = 60000;
+      const TIMEOUT_MS = 15000;
+      const LS_KEY = 'ocg.key';
+      const LS_SNAPSHOT = 'ocg.snapshot';
+      const LS_HISTORY = 'ocg.history';
+      const DEMO_QUERY = 'demo';
+      const HISTORY_SLOTS = 30;
+
+      const WINDOWS = [
+        { id: 'rolling', code: '5H', name: '滚动窗口', en: 'ROLLING', cap: 0.20 },
+        { id: 'weekly', code: '7D', name: '每周', en: 'WEEKLY', cap: 0.50 },
+        { id: 'monthly', code: '1M', name: '每月', en: 'MONTHLY', cap: 1.00 },
+      ];
+
+      const CONVERSIONS = [
+        { target: 'weekly', source: 'rolling' },
+        { target: 'monthly', source: 'weekly' },
+      ];
+
+      const STATUS = {
+        safe: { label: '安全', cls: 'safe' },
+        tight: { label: '偏紧', cls: 'tight' },
+        danger: { label: '将打满', cls: 'danger' },
+        limited: { label: '已限流', cls: 'danger' },
+        waiting: { label: '等待使用', cls: 'idle' },
+        insufficient: { label: '数据不足', cls: 'idle' },
+        resetting: { label: '刷新中', cls: 'idle' },
+        unavailable: { label: '不可用', cls: 'idle' },
+      };
+
+      const state = {
+        mode: 'idle',            // idle | connecting | live | demo
+        key: null,
+        remember: true,
+        data: null,
+        history: {},
+        fetchedAt: 0,
+        error: null,
+        refreshing: false,
+        manualRetries: 0,
+        lastAnalyses: null,
+        timers: { poll: null, clock: null, slow: null },
+      };
+
+      const $ = (id) => document.getElementById(id);
+      const setup = $('setup');
+      const dashboard = $('dashboard');
+      const topbar = $('topbar');
+      const connectForm = $('connectForm');
+      const apiKey = $('apiKey');
+      const toggleKey = $('toggleKey');
+      const remember = $('remember');
+      const rememberHint = $('rememberHint');
+      const connectBtn = $('connectBtn');
+      const demoBtn = $('demoBtn');
+      const setupError = $('setupError');
+      const connectStatus = $('connectStatus');
+      const connState = $('connState');
+      const connLabel = $('connLabel');
+      const lastSync = $('lastSync');
+      const refreshBtn = $('refreshBtn');
+      const menu = $('menu');
+      const disconnectBtn = $('disconnectBtn');
+      const disconnectLabel = $('disconnectLabel');
+      const banner = $('banner');
+      const bannerBody = $('bannerBody');
+      const bannerRetry = $('bannerRetry');
+      const verdict = $('verdict');
+      const verdictDot = $('verdictDot');
+      const summarySub = $('summarySub');
+      const windowsEl = $('windows');
+      const convRows = $('convRows');
+      const refreshNote = $('refreshNote');
+      const demoNote = $('demoNote');
+      const dashTitle = $('dashTitle');
+
+      /* ------------------------------ storage ------------------------------ */
+
+      function probeStorage(name) {
+        try {
+          const store = window[name];
+          const probe = '__ocg_probe__';
+          store.setItem(probe, '1');
+          store.removeItem(probe);
+          return store;
+        } catch (_) {
+          return null;
+        }
+      }
+      const localStore = probeStorage('localStorage');
+      const sessionStore = probeStorage('sessionStorage');
+
+      function readStoredKey() {
+        try {
+          if (localStore) {
+            const value = localStore.getItem(LS_KEY);
+            if (value) return { key: value, remembered: true };
+          }
+          if (sessionStore) {
+            const value = sessionStore.getItem(LS_KEY);
+            if (value) return { key: value, remembered: false };
+          }
+        } catch (_) {}
+        return { key: null, remembered: false };
+      }
+
+      function writeStoredKey(key, remembered) {
+        try {
+          if (localStore) localStore.removeItem(LS_KEY);
+          if (sessionStore) sessionStore.removeItem(LS_KEY);
+          const store = remembered ? localStore : sessionStore;
+          if (store) store.setItem(LS_KEY, key);
+        } catch (_) {}
+      }
+
+      function clearStoredKey() {
+        try { if (localStore) localStore.removeItem(LS_KEY); } catch (_) {}
+        try { if (sessionStore) sessionStore.removeItem(LS_KEY); } catch (_) {}
+      }
+
+      function readSnapshot() {
+        if (!localStore) return null;
+        try {
+          const raw = localStore.getItem(LS_SNAPSHOT);
+          if (!raw) return null;
+          const snap = JSON.parse(raw);
+          if (!snap || typeof snap !== 'object' || !snap.data) return null;
+          const data = {};
+          for (const w of WINDOWS) {
+            const item = snap.data[w.id];
+            if (!item) continue;
+            if (typeof item.percent !== 'number' || typeof item.resetMs !== 'number') return null;
+            data[w.id] = {
+              status: item.status === 'rate-limited' ? 'rate-limited' : 'ok',
+              percent: item.percent,
+              resetMs: item.resetMs,
+            };
+          }
+          if (!Object.keys(data).length) return null;
+          return { fetchedAt: Number(snap.fetchedAt) || 0, data };
+        } catch (_) {
+          return null;
+        }
+      }
+
+      function writeSnapshot(fetchedAt, data) {
+        if (!localStore) return;
+        try {
+          localStore.setItem(LS_SNAPSHOT, JSON.stringify({ v: 1, fetchedAt, data }));
+        } catch (_) {}
+      }
+
+      function clearSnapshot() {
+        try { if (localStore) localStore.removeItem(LS_SNAPSHOT); } catch (_) {}
+      }
+
+      function readHistory() {
+        if (!localStore) return {};
+        try {
+          const raw = localStore.getItem(LS_HISTORY);
+          if (!raw) return {};
+          const snap = JSON.parse(raw);
+          const windows = snap && snap.v === 2 && snap.windows;
+          if (!windows || typeof windows !== 'object') return {};
+          const out = {};
+          for (const w of WINDOWS) {
+            const item = windows[w.id];
+            if (!item || typeof item.resetMs !== 'number' || !Array.isArray(item.points)) continue;
+            const points = [];
+            for (const point of item.points) {
+              if (!point || typeof point.t !== 'number' || typeof point.p !== 'number') continue;
+              const slot = Number(point.slot);
+              if (!Number.isInteger(slot) || slot < 0 || slot >= HISTORY_SLOTS) continue;
+              points.push({ t: point.t, p: Math.max(0, Math.min(100, point.p)), slot });
+            }
+            points.sort((a, b) => a.t - b.t);
+            if (points.length) out[w.id] = { resetMs: item.resetMs, points };
+          }
+          return out;
+        } catch (_) {
+          return {};
+        }
+      }
+
+      function saveHistory() {
+        if (!localStore) return;
+        try {
+          localStore.setItem(LS_HISTORY, JSON.stringify({ v: 2, windows: state.history }));
+        } catch (_) {}
+      }
+
+      function recordHistory(data, t) {
+        const next = { ...state.history };
+        for (const w of WINDOWS) {
+          const item = data[w.id];
+          if (!item) continue;
+          let hist = next[w.id];
+          if (!hist || hist.resetMs !== item.resetMs) hist = { resetMs: item.resetMs, points: [] };
+          const points = hist.points.slice();
+          const start = windowStartMs(w.id, item.resetMs);
+          const windowMs = Math.max(1, item.resetMs - start);
+          const slotWidth = windowMs / HISTORY_SLOTS;
+          const slot = Math.max(0, Math.min(HISTORY_SLOTS - 1, Math.floor((t - start) / slotWidth)));
+          if (points.some((point) => point.slot === slot)) continue;
+          points.push({ t: start + slot * slotWidth, p: item.percent, slot });
+          points.sort((a, b) => a.t - b.t);
+          next[w.id] = { resetMs: item.resetMs, points };
+        }
+        state.history = next;
+        saveHistory();
+      }
+
+      /* ----------------------------- formatting ---------------------------- */
+
+      const fmtAbs = new Intl.DateTimeFormat('zh-CN', {
+        month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
+      });
+      const fmtUtc = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'UTC', year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', hour12: false,
+      });
+
+      function fmtDur(ms) {
+        if (!Number.isFinite(ms) || ms <= 0) return '0m';
+        const min = Math.floor(ms / 60000);
+        if (min < 1) return '<1m';
+        const d = Math.floor(min / 1440);
+        const h = Math.floor((min % 1440) / 60);
+        const m = min % 60;
+        if (d > 0) return `${d}d ${h}h`;
+        if (h > 0) return `${h}h ${m}m`;
+        return `${m}m`;
+      }
+
+      function fmtAgo(ms) {
+        if (!Number.isFinite(ms) || ms < 0) return '刚刚';
+        const s = Math.floor(ms / 1000);
+        if (s < 5) return '刚刚';
+        if (s < 60) return `${s}s 前`;
+        const m = Math.floor(s / 60);
+        if (m < 60) return `${m}m 前`;
+        return `${Math.floor(m / 60)}h 前`;
+      }
+
+      function fmtAxisTime(t, id) {
+        const date = new Date(t);
+        if (id === 'rolling') {
+          return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+        }
+        return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`;
+      }
+
+      function downsamplePoints(points, target = 120) {
+        if (!points || points.length <= target) return points || [];
+        const first = points[0].t;
+        const last = points[points.length - 1].t;
+        const width = Math.max(1, (last - first) / target);
+        const out = [];
+        let index = 0;
+        for (let i = 0; i < target; i++) {
+          const end = first + (i + 1) * width;
+          let n = 0, sumT = 0, sumP = 0;
+          while (index < points.length && (points[index].t < end || i === target - 1)) {
+            sumT += points[index].t;
+            sumP += points[index].p;
+            n++;
+            index++;
+          }
+          if (n) out.push({ t: sumT / n, p: sumP / n });
+        }
+        return out;
+      }
+
+      function fmtPct1(value) {
+        if (!Number.isFinite(value)) return '—';
+        if (value > 0 && value < 0.1) return '<0.1%';
+        return `${value.toFixed(1)}%`;
+      }
+
+      function fmtProjected(value) {
+        if (value == null || !Number.isFinite(value)) return '—';
+        if (value >= 100) return '打满';
+        return `${Math.min(99, Math.round(value))}%`;
+      }
+
+      function fmtNum(value) {
+        return Number.isFinite(value) ? String(Math.round(value)) : '—';
+      }
+
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, (ch) => ({
+          '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+        }[ch]));
+      }
+
+      function redact(text) {
+        if (!text) return '';
+        const value = String(text);
+        return state.key ? value.split(state.key).join('[redacted]') : value;
+      }
+
+      /* ------------------------------- errors ------------------------------ */
+
+      class ApiError extends Error {
+        constructor(status, body, text) {
+          super(`HTTP ${status}`);
+          this.name = 'ApiError';
+          this.status = status;
+          this.body = body;
+          this.text = text;
+        }
+      }
+
+      class PayloadError extends Error {
+        constructor(text) {
+          super('Unrecognized payload');
+          this.name = 'PayloadError';
+          this.text = text;
+        }
+      }
+
+      function describeError(error) {
+        if (error && error.name === 'ApiError') {
+          if (error.status === 401) {
+            return { msg: 'API key 无效或已过期。到 Console 重新生成一个，再粘贴进来。', kind: 'auth' };
+          }
+          if (error.status === 403) {
+            return { msg: '这个 key 没有 OpenCode Go 订阅，或所在 workspace 未开通 Go。', kind: 'auth' };
+          }
+          if (error.status === 429) {
+            return { msg: '请求太频繁（HTTP 429）。稍等一会儿再试。', kind: 'transient' };
+          }
+          if (error.status >= 500) {
+            return { msg: `OpenCode 服务暂时不可用（HTTP ${error.status}）。`, kind: 'transient' };
+          }
+          const detail = error.body && (
+            typeof error.body.error === 'string'
+              ? error.body.error
+              : error.body.error?.message || error.body.message
+          );
+          return {
+            msg: `请求失败（HTTP ${error.status}）${detail ? `：${redact(detail)}` : '。'}`,
+            kind: 'transient',
+            raw: error.text,
+          };
+        }
+        if (error && error.name === 'AbortError') {
+          return { msg: '请求超时（15 秒）。检查网络后重试。', kind: 'transient' };
+        }
+        if (error && error.name === 'PayloadError') {
+          return { msg: '返回格式无法识别，接口可能已变更。', kind: 'unknown', raw: error.text };
+        }
+        if (error instanceof TypeError) {
+          return { msg: '无法连接 opencode.ai。检查网络、代理或浏览器扩展。', kind: 'transient' };
+        }
+        return { msg: `连接失败：${redact(String((error && error.message) || error))}`, kind: 'transient' };
+      }
+
+      /* ------------------------------- fetch ------------------------------- */
+
+      async function fetchUsage(key) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+        try {
+          const response = await fetch(API_URL, {
+            method: 'GET',
+            mode: 'cors',
+            credentials: 'omit',
+            cache: 'no-store',
+            headers: {
+              Authorization: `Bearer ${key}`,
+              Accept: 'application/json',
+            },
+            signal: controller.signal,
+          });
+          const text = await response.text();
+          let body = null;
+          try { body = JSON.parse(text); } catch (_) {}
+          if (!response.ok) throw new ApiError(response.status, body, text);
+          if (!body) throw new PayloadError(text);
+          return { body, text };
+        } finally {
+          clearTimeout(timer);
+        }
+      }
+
+      function normalize(raw, rawText) {
+        const usage = raw && (raw.usage || raw);
+        if (!usage || typeof usage !== 'object') throw new PayloadError(rawText);
+        const data = {};
+        let found = 0;
+        for (const w of WINDOWS) {
+          const item = usage[w.id];
+          if (!item || typeof item !== 'object') { data[w.id] = null; continue; }
+          const percentNumber = typeof item.percent === 'number' ? item.percent : Number(item.percent);
+          const resetMs = typeof item.resetsAt === 'number' ? item.resetsAt : Date.parse(item.resetsAt);
+          if (!Number.isFinite(percentNumber) || !Number.isFinite(resetMs)) { data[w.id] = null; continue; }
+          data[w.id] = {
+            status: item.status === 'rate-limited' ? 'rate-limited' : 'ok',
+            percent: Math.max(0, Math.min(100, percentNumber)),
+            resetMs,
+          };
+          found++;
+        }
+        if (!found) throw new PayloadError(rawText);
+        return data;
+      }
+
+      /* ------------------------------ analysis ----------------------------- */
+
+      function windowStartMs(id, resetMs) {
+        if (id === 'rolling') return resetMs - 5 * 3600e3;
+        if (id === 'weekly') return resetMs - 7 * 86400e3;
+        const date = new Date(resetMs);
+        const day = date.getUTCDate();
+        date.setUTCDate(1);
+        date.setUTCMonth(date.getUTCMonth() - 1);
+        const lastDay = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
+        date.setUTCDate(Math.min(day, lastDay));
+        return date.getTime();
+      }
+
+      function analyze(w, item, now, history) {
+        const analysis = {
+          w,
+          available: false,
+          percent: 0,
+          resetMs: 0,
+          startMs: 0,
+          windowMs: 0,
+          remaining: 0,
+          elapsed: 0,
+          limited: false,
+          rate: undefined,
+          projected: null,
+          timeToLimit: null,
+          willHit: false,
+          paceRatio: 0,
+          history: [],
+          status: 'unavailable',
+        };
+        if (!item) return analysis;
+
+        const resetMs = item.resetMs;
+        const startMs = windowStartMs(w.id, resetMs);
+        const windowMs = resetMs - startMs;
+        const remaining = resetMs - now;
+        const elapsed = Math.max(0, now - startMs);
+        const percent = item.percent;
+        const limited = item.status === 'rate-limited' || percent >= 100;
+        const hist = history && history[w.id] && history[w.id].resetMs === resetMs
+          ? history[w.id].points
+          : [];
+
+        Object.assign(analysis, {
+          available: true, percent, resetMs, startMs, windowMs, remaining, elapsed, limited, history: hist,
+        });
+
+        if (remaining <= 0) { analysis.status = 'resetting'; return analysis; }
+        if (limited) { analysis.status = 'limited'; analysis.projected = 100; return analysis; }
+
+        const notStarted = w.id === 'rolling' && percent <= 0 && remaining > 4.9 * 3600e3;
+        if (notStarted) { analysis.status = 'waiting'; return analysis; }
+        if (percent <= 0) { analysis.projected = 0; analysis.status = 'safe'; return analysis; }
+
+        if (elapsed < 60000) {
+          analysis.status = 'insufficient';
+          return analysis;
+        }
+
+        const rate = percent / elapsed;
+        analysis.rate = rate;
+        const projected = percent + rate * remaining;
+        analysis.projected = projected;
+        analysis.timeToLimit = (100 - percent) / rate;
+        analysis.willHit = projected >= 100;
+        analysis.paceRatio = (projected - percent) / Math.max(1e-9, 100 - percent);
+
+        if (analysis.willHit) analysis.status = 'danger';
+        else if (projected >= 80 || analysis.paceRatio >= 0.8) analysis.status = 'tight';
+        else analysis.status = 'safe';
+        return analysis;
+      }
+
+      /* ------------------------------- chart ------------------------------- */
+
+      function chartSvg(a, width = 340) {
+        const W = Math.max(260, Math.round(width || 340));
+        const H = 132, L = 26, R = W - 6, T = 10, B = 104;
+        const span = a.available ? Math.max(1, a.resetMs - a.startMs) : 1;
+        const x = (t) => L + Math.max(0, Math.min(1, (t - (a.available ? a.startMs : 0)) / span)) * (R - L);
+        const y = (p) => B - Math.max(0, Math.min(100, p)) / 100 * (B - T);
+        const y0 = y(0);
+        const y100 = y(100);
+        const now = Date.now();
+        const nowX = x(now);
+        let out = '';
+
+        for (const p of [0, 50, 100]) {
+          out += `<line class="c-grid" x1="${L}" y1="${y(p)}" x2="${R}" y2="${y(p)}"/>`;
+        }
+        out += `<text class="c-axis" x="${L - 4}" y="${y0 + 3}" text-anchor="end">0</text>`;
+        out += `<text class="c-axis" x="${L - 4}" y="${y(50) + 3}" text-anchor="end">50</text>`;
+        out += `<text class="c-axis" x="${L - 4}" y="${y100 + 3}" text-anchor="end">100</text>`;
+        out += `<line class="c-limit" x1="${L}" y1="${y100}" x2="${R}" y2="${y100}"/>`;
+
+        if (!a.available) {
+          out += `<text class="c-axis c-axis--strong" x="${(L + R) / 2}" y="${(T + B) / 2}" text-anchor="middle">不可用</text>`;
+          return `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true" focusable="false">${out}</svg>`;
+        }
+
+        const startLabel = fmtAxisTime(a.startMs, a.w.id);
+        const resetLabel = fmtAxisTime(a.resetMs, a.w.id);
+        out += `<text class="c-axis" x="${L}" y="${B + 18}" text-anchor="start">${startLabel}</text>`;
+        out += `<text class="c-axis" x="${R}" y="${B + 18}" text-anchor="end">${resetLabel}</text>`;
+
+        if (a.status === 'waiting') {
+          out += `<text class="c-axis c-axis--strong" x="${(L + R) / 2}" y="${(T + B) / 2}" text-anchor="middle">窗口未开始</text>`;
+          return `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true" focusable="false">${out}</svg>`;
+        }
+        if (a.status === 'resetting') {
+          out += `<text class="c-axis c-axis--strong" x="${(L + R) / 2}" y="${(T + B) / 2}" text-anchor="middle">等待刷新</text>`;
+          return `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true" focusable="false">${out}</svg>`;
+        }
+
+        const currentY = y(a.percent);
+        const history = downsamplePoints(a.history || [], 120);
+        const line = history.concat([{ t: now, p: a.percent }]);
+        if (line.length) {
+          const firstX = x(line[0].t);
+          const lastX = x(line[line.length - 1].t);
+          const area = `M ${firstX} ${y0} L ${line.map((point) => `${x(point.t).toFixed(1)} ${y(point.p).toFixed(1)}`).join(' L ')} L ${lastX} ${y0} Z`;
+          out += `<path class="c-area" d="${area}"/>`;
+          out += `<polyline class="c-actual" points="${line.map((point) => `${x(point.t).toFixed(1)},${y(point.p).toFixed(1)}`).join(' ')}"/>`;
+        }
+
+        out += `<line class="c-now" x1="${nowX}" y1="${y0}" x2="${nowX}" y2="${y100}"/>`;
+        out += `<circle class="c-now-dot" cx="${nowX}" cy="${currentY}" r="3"/>`;
+        const nowLabelX = Math.max(L + 22, Math.min(R - 22, nowX));
+        const nowLabelY = currentY < T + 22 ? currentY + 16 : currentY - 7;
+        out += `<text class="c-axis c-axis--strong" x="${nowLabelX}" y="${nowLabelY}" text-anchor="middle">现在</text>`;
+
+        if (a.projected != null && !a.limited && a.remaining > 0) {
+          if (a.projected >= 100) {
+            const headroom = Math.max(1e-9, a.projected - a.percent);
+            const hitFraction = Math.max(0, Math.min(1, (100 - a.percent) / headroom));
+            const hitX = nowX + (R - nowX) * hitFraction;
+            out += `<line class="c-proj c-proj--danger" x1="${nowX}" y1="${currentY}" x2="${hitX}" y2="${y100}"/>`;
+            out += `<line class="c-hit" x1="${hitX}" y1="${y100}" x2="${hitX}" y2="${y0}"/>`;
+            out += `<circle class="c-hit-dot" cx="${hitX}" cy="${y100}" r="3"/>`;
+            out += `<text class="c-hit-label" x="${Math.max(L + 18, Math.min(R - 18, hitX))}" y="${y100 - 7}" text-anchor="middle">打满</text>`;
+          } else {
+            const projectionClass = a.status === 'tight' ? 'c-proj c-proj--warn' : 'c-proj';
+            out += `<line class="${projectionClass}" x1="${nowX}" y1="${currentY}" x2="${R}" y2="${y(a.projected)}"/>`;
+          }
+        }
+
+        return `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true" focusable="false">${out}</svg>`;
+      }
+
+      /* ------------------------------- cards ------------------------------- */
+
+      function cardHtml(a) {
+        const status = STATUS[a.status] || STATUS.unavailable;
+        const hasPercent = a.available;
+        const percentText = hasPercent ? fmtNum(a.percent) : '—';
+
+        let leftKey, leftValue, leftCountdown = null, leftAbsolute = '';
+        let resetValue = '—', resetClass = 'v--muted';
+
+        if (a.status === 'waiting') {
+          leftKey = '窗口';
+          leftValue = '未开始';
+        } else if (a.status === 'unavailable') {
+          leftKey = '状态';
+          leftValue = '不可用';
+        } else if (a.status === 'resetting') {
+          leftKey = '状态';
+          leftValue = '等待刷新';
+        } else if (a.status === 'limited') {
+          leftKey = '重置';
+          leftValue = fmtDur(a.remaining);
+          leftCountdown = a.resetMs;
+          leftAbsolute = fmtAbs.format(new Date(a.resetMs));
+          resetValue = `${Math.round(a.projected)}%`;
+          resetClass = 'v--danger';
+        } else {
+          leftKey = '重置';
+          leftValue = fmtDur(a.remaining);
+          leftCountdown = a.resetMs;
+          leftAbsolute = fmtAbs.format(new Date(a.resetMs));
+
+          if (a.status === 'danger') {
+            resetValue = `${Math.round(a.projected)}%`;
+            resetClass = 'v--danger';
+          } else if (a.status === 'insufficient') {
+            resetValue = '—';
+          } else {
+            resetValue = fmtProjected(a.projected);
+            resetClass = a.status === 'tight' ? 'v--warn' : '';
+          }
+        }
+
+        const leftCountdownAttr = leftCountdown
+          ? ` data-countdown-at="${leftCountdown}"`
+          : '';
+        const note = hasPercent ? '占本窗口上限' : '窗口数据不可用';
+
+        return `<article class="window-card" aria-label="${a.w.code} ${a.w.name}" data-od-id="window-${a.w.id}" data-window="${a.w.id}">
+          <div class="win-head">
+            <div class="win-label">
+              <h3 class="win-code" id="win-${a.w.id}">${a.w.code} <span class="win-name">${a.w.name}</span></h3>
+            </div>
+            <span class="status status--${status.cls}"><span class="dot"></span>${status.label}</span>
+          </div>
+          <div class="win-pct"><span class="num">${percentText}</span>${hasPercent ? '<span class="unit">%</span>' : ''}</div>
+          <p class="win-note">${note}</p>
+          <div class="win-chart">${chartSvg(a)}</div>
+          <div class="win-foot">
+            <div class="metric">
+              <span class="k">${leftKey}</span>
+              <span class="v"${leftCountdownAttr}>${leftValue}</span>
+              ${leftAbsolute ? `<span class="reset-abs" title="UTC ${escapeHtml(fmtUtc.format(new Date(a.resetMs)))}">${leftAbsolute}</span>` : ''}
+            </div>
+            <div class="metric metric--right">
+              <span class="k">预计重置时</span>
+              <span class="v ${resetClass}">${resetValue}</span>
+            </div>
+          </div>
+        </article>`;
+      }
+
+      /* ------------------------------ summary ------------------------------ */
+
+      function buildSummary(analyses) {
+        const available = analyses.filter((a) => a.available);
+        const limited = available.find((a) => a.status === 'limited');
+        if (limited) {
+          return {
+            tone: 'danger',
+            verdict: `<strong>${limited.w.name}</strong>已限流，${fmtDur(limited.remaining)} 后重置。`,
+            sub: '其他窗口仍按当前速度预测。',
+          };
+        }
+
+        const dangers = available
+          .filter((a) => a.status === 'danger' && a.timeToLimit != null)
+          .sort((a, b) => a.timeToLimit - b.timeToLimit);
+        if (dangers.length) {
+          return {
+            tone: 'danger',
+            verdict: `<strong>${dangers[0].w.name}</strong>是约束窗口：按当前速度会在重置前打满。`,
+            sub: '预测假设本窗口的平均速度不变。',
+          };
+        }
+
+        const tight = available
+          .filter((a) => a.status === 'tight')
+          .sort((a, b) => (b.projected || 0) - (a.projected || 0))[0];
+        if (tight) {
+          return {
+            tone: 'warn',
+            verdict: `<strong>${tight.w.name}</strong>偏紧：重置时接近上限。`,
+            sub: '线性外推，实际会波动。',
+          };
+        }
+
+        if (!available.some((a) => a.projected != null)) {
+          return {
+            tone: 'idle',
+            verdict: '等待数据；稍后给出预估。',
+            sub: '窗口刚开始时约 1 分钟后可用。',
+          };
+        }
+
+        return {
+          tone: 'safe',
+          verdict: '三个窗口都在预算内。',
+          sub: '按当前速度线性外推。',
+        };
+      }
+
+      /* ------------------------------ conversion ---------------------------- */
+
+      function buildConversions(analyses, now) {
+        const byId = new Map(analyses.map((a) => [a.w.id, a]));
+        return CONVERSIONS.map(({ target, source }) => {
+          const t = byId.get(target);
+          const s = byId.get(source);
+          const out = {
+            target: t,
+            source: s,
+            available: !!(t && t.available),
+            used: null,
+            elapsedRatio: null,
+            added: 0,
+            rest: null,
+            known: false,
+            capped: false,
+            horizonMs: 0,
+          };
+          if (!t || !t.available) return out;
+
+          const used = Math.max(0, Math.min(100, t.percent));
+          out.used = used;
+          out.elapsedRatio = Math.max(0, Math.min(1, (now - t.startMs) / Math.max(1, t.windowMs)));
+          out.rest = Math.max(0, 100 - used);
+
+          if (!s || !s.available) return out;
+
+          const horizonMs = Math.max(0, Math.min(s.resetMs, t.resetMs) - now);
+          out.horizonMs = horizonMs;
+
+          let rate = null;
+          if (s.status === 'limited') rate = 0;
+          else if (s.status === 'waiting' || s.status === 'resetting' || s.status === 'insufficient') rate = null;
+          else if (s.percent <= 0) rate = 0;
+          else if (s.elapsed > 0) rate = s.percent / s.elapsed;
+          if (rate == null) return out;
+
+          out.known = true;
+          const raw = rate * (s.w.cap / t.w.cap) * horizonMs;
+          const room = Math.max(0, 100 - used);
+          out.added = Math.min(raw, room);
+          out.capped = raw > room + 1e-9;
+          out.rest = Math.max(0, 100 - used - out.added);
+          return out;
+        });
+      }
+
+      function conversionSourceText(c) {
+        const t = c.target;
+        const s = c.source;
+        if (!t || !t.available) return '窗口数据不可用';
+        if (!s || !s.available) return `${s ? s.w.code : '上游'} 不可用`;
+        if (s.status === 'waiting') return `${s.w.code} 尚未开始`;
+        if (s.status === 'resetting') return `${s.w.code} 等待刷新`;
+        if (s.status === 'insufficient') return `${s.w.code} 数据不足`;
+        if (s.status === 'limited') return `${s.w.code} 已限流`;
+        if (!c.known) return `${s.w.code} 数据不足`;
+        if (t.resetMs < s.resetMs) {
+          const shortTarget = t.w.id === 'weekly' ? '周' : '月';
+          return `按 ${s.w.code} 速度 · 距${shortTarget}重置 ${fmtDur(c.horizonMs)}`;
+        }
+        return `按 ${s.w.code} 剩余 ${fmtDur(c.horizonMs)}`;
+      }
+
+      function conversionSegments(c) {
+        if (!c.available) return '';
+        const segs = [];
+        if (c.used > 0.05) segs.push({ cls: 'used', start: 0, end: c.used });
+        const projVisible = c.known && c.added > 0.05;
+        if (projVisible) segs.push({ cls: 'proj', start: c.used, end: c.used + c.added });
+        const restStart = c.used + (projVisible ? c.added : 0);
+        if (c.rest > 0.05) segs.push({ cls: 'rest', start: restStart, end: 100 });
+
+        return segs.map((seg, index) => {
+          const first = index === 0;
+          const last = index === segs.length - 1;
+          const width = (seg.end - seg.start).toFixed(3);
+          let style;
+          if (first && last) style = 'left:0;right:0';
+          else if (first) style = `left:0;width:calc(${width}% - 2px)`;
+          else if (last) style = `left:calc(${seg.start.toFixed(3)}% + 2px);right:0`;
+          else style = `left:calc(${seg.start.toFixed(3)}% + 2px);width:calc(${width}% - 4px)`;
+          return `<span class="conv-seg conv-seg--${seg.cls}" aria-hidden="true" style="${style}"></span>`;
+        }).join('');
+      }
+
+      function renderConversions(conversions) {
+        convRows.innerHTML = conversions.map((c) => {
+          const t = c.target;
+          const s = c.source;
+          const available = c.available;
+          const usedText = available ? fmtPct1(c.used) : '—';
+          const addedText = available && c.known ? `+${fmtPct1(c.added)}` : '—';
+          const restText = !available ? '—' : (c.known ? fmtPct1(c.rest) : `≤${fmtPct1(c.rest)}`);
+          const sourceText = conversionSourceText(c);
+          const timePos = c.elapsedRatio == null ? 0 : (c.elapsedRatio * 100).toFixed(2);
+          const startLabel = available ? fmtAxisTime(t.startMs, t.w.id) : '—';
+          const resetLabel = available ? fmtAxisTime(t.resetMs, t.w.id) : '—';
+          const sourceCode = s ? s.w.code : '上游';
+
+          const ariaParts = [];
+          if (available) {
+            ariaParts.push(`${t.w.name}已用 ${fmtPct1(c.used)}`);
+            if (c.known) ariaParts.push(`${sourceCode} 折算新增 ${fmtPct1(c.added)}${c.capped ? '，已到上限' : ''}`);
+            else ariaParts.push(`${sourceCode} 速度未知，未计预估`);
+            ariaParts.push(`剩余 ${fmtPct1(c.rest)}`);
+          } else {
+            ariaParts.push(`${t.w.name}数据不可用`);
+          }
+          const aria = `${ariaParts.join('；')}。`;
+
+          return `<article class="conv" data-od-id="conv-${t.w.id}" aria-labelledby="conv-${t.w.id}-title">
+            <div class="conv-head">
+              <div class="conv-title">
+                <h3 class="conv-code" id="conv-${t.w.id}-title">${t.w.code} <span class="conv-name">${t.w.id === 'weekly' ? '周视图' : '月视图'}</span></h3>
+                <span class="conv-src">· ${sourceText}</span>
+              </div>
+              <div class="conv-nums">
+                <span class="conv-num"><i class="conv-swatch conv-swatch--used" aria-hidden="true"></i>已用 <b>${usedText}</b></span>
+                <span class="conv-num"><i class="conv-swatch conv-swatch--proj" aria-hidden="true"></i>${sourceCode} 折算 <b>${addedText}</b>${c.capped ? '<span class="flag">达上限</span>' : ''}</span>
+                <span class="conv-num"><i class="conv-swatch conv-swatch--rest" aria-hidden="true"></i>余量 <b>${restText}</b></span>
+              </div>
+            </div>
+            <div class="conv-rows">
+              <div class="conv-row">
+                <span class="conv-k">用量</span>
+                <div class="conv-axis">
+                  <div class="conv-track conv-track--use" role="img" aria-label="${aria}">
+                    ${conversionSegments(c)}
+                  </div>
+                  <div class="conv-scale conv-scale--ends"><span>0%</span><span>100% 上限</span></div>
+                </div>
+              </div>
+              <div class="conv-row">
+                <span class="conv-k">时间</span>
+                <div class="conv-axis">
+                  <div class="conv-track conv-track--time" role="img" aria-label="时间轴，已过 ${Math.round((c.elapsedRatio || 0) * 100)}%">
+                    <span class="conv-timefill" style="width:${timePos}%"></span>
+                    ${available ? `<span class="conv-now" style="left:${timePos}%"></span>` : ''}
+                  </div>
+                  <div class="conv-scale conv-scale--ends"><span>起点 ${startLabel}</span><span>重置 ${resetLabel}</span></div>
+                </div>
+              </div>
+            </div>
+          </article>`;
+        }).join('');
+      }
+
+      /* ----------------------------- rendering ----------------------------- */
+
+      function fitCharts(analyses) {
+        if (!analyses) return;
+        for (const a of analyses) {
+          const card = windowsEl.querySelector(`[data-window="${a.w.id}"]`);
+          if (!card) continue;
+          const holder = card.querySelector('.win-chart');
+          if (!holder) continue;
+          const width = Math.max(260, Math.round(holder.clientWidth));
+          const current = holder.querySelector('svg');
+          if (current && current.getAttribute('viewBox') === `0 0 ${width} 132`) continue;
+          holder.innerHTML = chartSvg(a, width);
+        }
+      }
+
+      function renderAll() {
+        if (!state.data) return;
+        const now = Date.now();
+        const analyses = WINDOWS.map((w) => analyze(w, state.data[w.id], now, state.history));
+        const summary = buildSummary(analyses);
+        state.lastAnalyses = analyses;
+
+        verdict.innerHTML = summary.verdict;
+        summarySub.textContent = summary.sub;
+        verdictDot.className = `verdict-dot verdict-dot--${summary.tone}`;
+
+        windowsEl.innerHTML = analyses.map((a) => cardHtml(a)).join('');
+        fitCharts(analyses);
+        renderConversions(buildConversions(analyses, now));
+        renderBanner();
+        updateTitle(analyses);
+        updateClock();
+      }
+
+      function renderBanner() {
+        if (!state.error) {
+          banner.hidden = true;
+          bannerBody.textContent = '';
+          return;
+        }
+        banner.hidden = false;
+        banner.classList.toggle('banner--danger', state.error.kind === 'auth');
+        bannerBody.textContent = '';
+
+        const message = document.createElement('p');
+        message.textContent = state.error.msg;
+        bannerBody.appendChild(message);
+
+        if (state.fetchedAt) {
+          const age = document.createElement('p');
+          age.className = 'hint';
+          age.style.marginTop = '4px';
+          age.textContent = `上次成功同步：${fmtAgo(Date.now() - state.fetchedAt)}`;
+          bannerBody.appendChild(age);
+        }
+
+        if (state.error.raw) {
+          const details = document.createElement('details');
+          const summary = document.createElement('summary');
+          summary.textContent = '查看原始响应';
+          const pre = document.createElement('pre');
+          pre.textContent = redact(state.error.raw).slice(0, 4000);
+          details.appendChild(summary);
+          details.appendChild(pre);
+          bannerBody.appendChild(details);
+        }
+      }
+
+      function updateTitle(analyses) {
+        const alert = analyses.find((a) => a.status === 'limited') || analyses.find((a) => a.status === 'danger');
+        if (state.mode === 'demo') {
+          document.title = alert
+            ? `OCG · 演示 · ${alert.w.name}${alert.status === 'limited' ? '已限流' : '将打满'}`
+            : 'OCG · 演示数据';
+        } else if (alert) {
+          document.title = `OCG · ${alert.w.name}${alert.status === 'limited' ? '已限流' : '将打满'}`;
+        } else {
+          document.title = 'OCG · 配额总览';
+        }
+      }
+
+      function renderConnection() {
+        connState.className = 'conn';
+        if (state.mode === 'demo') {
+          connState.classList.add('conn--demo');
+          connLabel.textContent = '演示数据';
+          lastSync.textContent = '本地演示';
+        } else if (state.error) {
+          connState.classList.add('conn--error');
+          connLabel.textContent = '同步失败';
+          lastSync.textContent = state.fetchedAt ? `上次同步 ${fmtAgo(Date.now() - state.fetchedAt)}` : '未同步';
+        } else if (state.mode === 'live') {
+          connState.classList.add('conn--live');
+          connLabel.textContent = '已连接';
+          if (state.refreshing) lastSync.textContent = '同步中…';
+          else if (state.fetchedAt) {
+            lastSync.textContent = Date.now() - state.fetchedAt < 5000
+              ? '刚刚同步'
+              : `上次同步 ${fmtAgo(Date.now() - state.fetchedAt)}`;
+          } else {
+            lastSync.textContent = '等待同步';
+          }
+        } else {
+          connState.classList.add('conn--idle');
+          connLabel.textContent = '未连接';
+          lastSync.textContent = '—';
+        }
+
+        refreshBtn.disabled = state.mode === 'demo' ? false : (!state.key || state.refreshing);
+        disconnectLabel.textContent = state.mode === 'demo' ? '连接真实 key' : '断开并清除 key';
+        refreshNote.textContent = state.mode === 'demo' ? '演示数据不自动刷新' : '每 60 秒自动刷新';
+        demoNote.hidden = state.mode !== 'demo';
+      }
+
+      /* ------------------------------ clock -------------------------------- */
+
+      let resetRefreshQueued = false;
+
+      function scheduleImmediateRefresh() {
+        if (resetRefreshQueued) return;
+        resetRefreshQueued = true;
+        setTimeout(() => {
+          resetRefreshQueued = false;
+          if (state.mode === 'live' && !document.hidden) refresh();
+        }, 1500);
+      }
+
+      function updateClock() {
+        const now = Date.now();
+        document.querySelectorAll('[data-countdown-at]').forEach((element) => {
+          const at = Number(element.getAttribute('data-countdown-at'));
+          if (!Number.isFinite(at)) return;
+          if (at <= now) {
+            element.textContent = '等待刷新';
+            if (state.mode === 'live' && !state.refreshing) scheduleImmediateRefresh();
+            return;
+          }
+          element.textContent = fmtDur(at - now);
+        });
+
+        if (state.mode === 'live' && !state.refreshing && !state.error) {
+          lastSync.textContent = state.fetchedAt
+            ? (now - state.fetchedAt < 5000 ? '刚刚同步' : `上次同步 ${fmtAgo(now - state.fetchedAt)}`)
+            : '等待同步';
+        }
+      }
+
+      function startClock() {
+        if (state.timers.clock) return;
+        updateClock();
+        state.timers.clock = setInterval(updateClock, 1000);
+      }
+
+      /* ------------------------------ polling ------------------------------ */
+
+      function startPolling() {
+        stopPolling();
+        state.timers.poll = setInterval(() => {
+          if (state.mode === 'live' && state.key && !document.hidden && !state.refreshing) refresh();
+        }, REFRESH_MS);
+      }
+
+      function stopPolling() {
+        if (state.timers.poll) {
+          clearInterval(state.timers.poll);
+          state.timers.poll = null;
+        }
+      }
+
+      /* ---------------------------- screens/forms -------------------------- */
+
+      function resetKeyVisibility() {
+        apiKey.type = 'password';
+        toggleKey.setAttribute('aria-pressed', 'false');
+        toggleKey.setAttribute('aria-label', '显示 key');
+        toggleKey.setAttribute('title', '显示 key');
+        const use = toggleKey.querySelector('use');
+        if (use) use.setAttribute('href', '#i-eye');
+      }
+
+      function showDashboard({ focus = false } = {}) {
+        apiKey.value = '';
+        setup.hidden = true;
+        dashboard.hidden = false;
+        topbar.hidden = false;
+        if (focus) {
+          dashTitle.focus({ preventScroll: true });
+          window.scrollTo(0, 0);
+        }
+      }
+
+      function showSetup({ focus = false } = {}) {
+        dashboard.hidden = true;
+        setup.hidden = false;
+        topbar.hidden = true;
+        document.title = 'OCG · 连接配额';
+        resetKeyVisibility();
+        if (focus) apiKey.focus();
+      }
+
+      function setFormBusy(busy) {
+        connectForm.classList.toggle('is-busy', busy);
+        connectForm.setAttribute('aria-busy', busy ? 'true' : 'false');
+        connectBtn.disabled = busy;
+        demoBtn.disabled = busy;
+        apiKey.disabled = busy;
+        remember.disabled = busy || !localStore;
+        connectBtn.querySelector('.btn-label').textContent = busy ? '验证中…' : '连接并读取';
+        connectStatus.textContent = busy ? '正在验证 API key' : '';
+      }
+
+      function setSetupError(info) {
+        setupError.textContent = '';
+        if (!info || !info.msg) {
+          setupError.hidden = true;
+          apiKey.removeAttribute('aria-invalid');
+          return;
+        }
+        setupError.hidden = false;
+        const message = document.createElement('span');
+        message.textContent = info.msg;
+        setupError.appendChild(message);
+
+        if (info.raw) {
+          const details = document.createElement('details');
+          const summary = document.createElement('summary');
+          summary.textContent = '查看原始响应';
+          const pre = document.createElement('pre');
+          pre.textContent = redact(info.raw).slice(0, 4000);
+          details.appendChild(summary);
+          details.appendChild(pre);
+          setupError.appendChild(details);
+        }
+
+        if (info.kind === 'auth' || info.kind === 'empty') apiKey.setAttribute('aria-invalid', 'true');
+        else apiKey.removeAttribute('aria-invalid');
+
+        if (info.focus) apiKey.focus();
+      }
+
+      /* ----------------------------- connect ------------------------------- */
+
+      async function connect() {
+        const key = apiKey.value.trim();
+        if (!key) {
+          setSetupError({ msg: '请输入 API key。', kind: 'empty', focus: true });
+          connectStatus.textContent = '需要 API key';
+          return;
+        }
+        if (key.length < 12) {
+          setSetupError({ msg: '这个 key 看起来太短；确认复制完整后再试。', kind: 'empty', focus: true });
+          connectStatus.textContent = 'API key 太短';
+          return;
+        }
+
+        setSetupError(null);
+        state.key = key;
+        state.remember = remember.checked;
+        state.mode = 'connecting';
+        state.error = null;
+        setFormBusy(true);
+        clearTimeout(state.timers.slow);
+        state.timers.slow = setTimeout(() => {
+          if (state.mode === 'connecting') connectBtn.querySelector('.btn-label').textContent = '仍在等待…';
+        }, 10000);
+
+        try {
+          const { body, text } = await fetchUsage(key);
+          const data = normalize(body, text);
+          state.data = data;
+          state.fetchedAt = Date.now();
+          recordHistory(data, state.fetchedAt);
+          state.mode = 'live';
+          state.error = null;
+          writeStoredKey(key, remember.checked);
+          writeSnapshot(state.fetchedAt, data);
+          apiKey.value = '';
+          showDashboard({ focus: true });
+          renderConnection();
+          renderAll();
+          startPolling();
+          connectStatus.textContent = '已连接';
+        } catch (error) {
+          state.mode = 'idle';
+          const info = describeError(error);
+          if (info.kind === 'auth') clearStoredKey();
+          setSetupError({ ...info, focus: true });
+          connectStatus.textContent = '连接失败';
+        } finally {
+          setFormBusy(false);
+          clearTimeout(state.timers.slow);
+        }
+      }
+
+      /* ----------------------------- refresh ------------------------------- */
+
+      async function refresh() {
+        if (state.mode === 'demo') {
+          state.fetchedAt = Date.now();
+          renderConnection();
+          renderAll();
+          return;
+        }
+        if (!state.key || state.refreshing) return;
+        if (state.mode !== 'live' && state.mode !== 'connecting') return;
+
+        state.refreshing = true;
+        state.error = null;
+        renderConnection();
+        const refreshIcon = refreshBtn.querySelector('svg');
+        if (refreshIcon) refreshIcon.classList.add('spin');
+        refreshBtn.disabled = true;
+        clearTimeout(state.timers.slow);
+        state.timers.slow = setTimeout(() => {
+          if (state.refreshing) lastSync.textContent = '网络较慢…';
+        }, 10000);
+
+        try {
+          const { body, text } = await fetchUsage(state.key);
+          const data = normalize(body, text);
+          state.data = data;
+          state.fetchedAt = Date.now();
+          recordHistory(data, state.fetchedAt);
+          state.error = null;
+          state.mode = 'live';
+          state.manualRetries = 0;
+          writeSnapshot(state.fetchedAt, data);
+          showDashboard({ focus: false });
+          renderConnection();
+          renderAll();
+          startPolling();
+        } catch (error) {
+          const info = describeError(error);
+          if (info.kind === 'auth') {
+            const oldKey = state.key;
+            clearStoredKey();
+            clearSnapshot();
+            state.key = null;
+            state.data = null;
+            state.fetchedAt = 0;
+            state.mode = 'idle';
+            state.error = null;
+            apiKey.value = oldKey || '';
+            showSetup({ focus: true });
+            setSetupError({ ...info, focus: true });
+            connectStatus.textContent = '连接失败';
+          } else {
+            state.error = info;
+            state.manualRetries++;
+            if (state.manualRetries >= 3) {
+              state.error.msg += ' 已连续失败多次；检查 key 或网络。';
+            }
+            renderConnection();
+            renderBanner();
+          }
+        } finally {
+          state.refreshing = false;
+          if (refreshIcon) refreshIcon.classList.remove('spin');
+          clearTimeout(state.timers.slow);
+          renderConnection();
+          updateClock();
+        }
+      }
+
+      /* ----------------------------- demo/exit ----------------------------- */
+
+      function demoData() {
+        const now = Date.now();
+        return {
+          rolling: { status: 'ok', percent: 18, resetMs: now + 90 * 60e3 },
+          weekly: { status: 'ok', percent: 84, resetMs: now + (2 * 1440 + 6 * 60) * 60e3 },
+          monthly: { status: 'ok', percent: 8, resetMs: now + (26 * 1440 + 4 * 60) * 60e3 },
+        };
+      }
+
+      function demoHistory(data) {
+        const now = Date.now();
+        const out = {};
+        for (const w of WINDOWS) {
+          const item = data[w.id];
+          if (!item) continue;
+          const start = windowStartMs(w.id, item.resetMs);
+          const points = [];
+          const count = 30;
+          for (let i = 0; i < count; i++) {
+            const ratio = i / (count - 1);
+            const wobble = i === count - 1 ? 0 : Math.sin(i * 1.7) * item.percent * 0.03;
+            points.push({
+              t: start + (now - start) * ratio,
+              p: Math.max(0, item.percent * ratio + wobble),
+            });
+          }
+          out[w.id] = { resetMs: item.resetMs, points };
+        }
+        return out;
+      }
+
+      function startDemo({ updateUrl = true, focus = false } = {}) {
+        stopPolling();
+        state.mode = 'demo';
+        state.key = null;
+        const data = demoData();
+        state.data = data;
+        state.history = demoHistory(data);
+        state.fetchedAt = Date.now();
+        state.error = null;
+        state.refreshing = false;
+        state.manualRetries = 0;
+        if (updateUrl) {
+          try { history.replaceState(null, '', `${location.pathname}?${DEMO_QUERY}=1`); } catch (_) {}
+        }
+        menu.open = false;
+        showDashboard({ focus });
+        renderConnection();
+        renderAll();
+      }
+
+      function disconnect() {
+        if (state.mode === 'demo') {
+          try { history.replaceState(null, '', location.pathname); } catch (_) {}
+          state.mode = 'idle';
+          state.data = null;
+          state.history = readHistory();
+          state.fetchedAt = 0;
+          state.error = null;
+          stopPolling();
+          showSetup({ focus: false });
+          const stored = readStoredKey();
+          if (stored.key) {
+            apiKey.value = stored.key;
+            remember.checked = stored.remembered && !!localStore;
+            connect();
+          } else {
+            apiKey.value = '';
+            apiKey.focus();
+          }
+          return;
+        }
+
+        clearStoredKey();
+        clearSnapshot();
+        state.key = null;
+        state.data = null;
+        state.fetchedAt = 0;
+        state.error = null;
+        state.mode = 'idle';
+        state.refreshing = false;
+        stopPolling();
+        showSetup({ focus: true });
+        apiKey.value = '';
+        setSetupError(null);
+        connectStatus.textContent = '';
+      }
+
+      /* ------------------------------ events ------------------------------- */
+
+      function isTyping(target) {
+        return !!(target && target instanceof Element && target.closest('input, textarea, select, [contenteditable="true"]'));
+      }
+
+      function bindEvents() {
+        connectForm.addEventListener('submit', (event) => {
+          event.preventDefault();
+          connect();
+        });
+
+        demoBtn.addEventListener('click', () => startDemo());
+
+        toggleKey.addEventListener('click', () => {
+          const reveal = apiKey.type === 'password';
+          apiKey.type = reveal ? 'text' : 'password';
+          toggleKey.setAttribute('aria-pressed', reveal ? 'true' : 'false');
+          toggleKey.setAttribute('aria-label', reveal ? '隐藏 key' : '显示 key');
+          toggleKey.setAttribute('title', reveal ? '隐藏 key' : '显示 key');
+          const use = toggleKey.querySelector('use');
+          if (use) use.setAttribute('href', reveal ? '#i-eye-off' : '#i-eye');
+          apiKey.focus();
+        });
+
+        apiKey.addEventListener('input', () => {
+          if (setupError.textContent) setSetupError(null);
+          apiKey.removeAttribute('aria-invalid');
+        });
+
+        refreshBtn.addEventListener('click', () => refresh());
+        bannerRetry.addEventListener('click', () => refresh());
+        disconnectBtn.addEventListener('click', () => {
+          menu.open = false;
+          disconnect();
+        });
+
+        document.addEventListener('click', (event) => {
+          if (menu.open && !menu.contains(event.target)) menu.open = false;
+        });
+
+        document.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape' && menu.open) {
+            menu.open = false;
+            return;
+          }
+          if ((event.key === 'r' || event.key === 'R')
+            && !event.metaKey && !event.ctrlKey && !event.altKey
+            && !isTyping(event.target)
+            && (state.mode === 'live' || state.mode === 'demo')) {
+            event.preventDefault();
+            refresh();
+          }
+        });
+
+        document.addEventListener('visibilitychange', () => {
+          if (document.hidden) return;
+          updateClock();
+          if (state.mode === 'live' && state.key && Date.now() - state.fetchedAt > REFRESH_MS) refresh();
+        });
+
+        window.addEventListener('online', () => {
+          if (state.mode === 'live') refresh();
+        });
+
+        window.addEventListener('offline', () => {
+          if (state.mode !== 'live') return;
+          state.error = { msg: '网络已断开；恢复后会自动刷新。', kind: 'transient' };
+          renderConnection();
+          renderBanner();
+        });
+      }
+
+      /* -------------------------------- init ------------------------------- */
+
+      function init() {
+        bindEvents();
+
+        if (window.ResizeObserver) {
+          const observer = new ResizeObserver(() => {
+            if (state.lastAnalyses) fitCharts(state.lastAnalyses);
+          });
+          observer.observe(windowsEl);
+        }
+
+        state.history = readHistory();
+
+        const params = new URLSearchParams(location.search);
+        if (params.get(DEMO_QUERY) === '1') {
+          startDemo({ updateUrl: false, focus: false });
+          startClock();
+          return;
+        }
+
+        const stored = readStoredKey();
+        remember.disabled = !localStore;
+        remember.checked = localStore ? (stored.key ? stored.remembered : true) : false;
+        rememberHint.textContent = localStore
+          ? 'localStorage；不勾选则只保留到关闭页面'
+          : '此浏览器禁用了 localStorage；key 只保留到关闭页面';
+
+        if (stored.key) {
+          apiKey.value = stored.key;
+          state.key = stored.key;
+          state.remember = stored.remembered;
+          const snapshot = readSnapshot();
+          if (snapshot) {
+            state.data = snapshot.data;
+            state.fetchedAt = snapshot.fetchedAt;
+            state.mode = 'live';
+            showDashboard({ focus: false });
+            renderConnection();
+            renderAll();
+            startPolling();
+            refresh();
+          } else {
+            showSetup({ focus: false });
+            connect();
+          }
+        } else {
+          showSetup({ focus: false });
+        }
+
+        startClock();
+      }
+
+      init();
+    })();
+  </script>
+</body>
+</html>

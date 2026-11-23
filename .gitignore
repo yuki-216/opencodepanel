@@ -1,0 +1,5 @@
+.env
+.env.*
+.zcode-site/
+Thumbs.db
+.DS_Store

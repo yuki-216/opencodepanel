@@ -2,6 +2,8 @@
 
 单文件静态仪表盘，读取 OpenCode Go 的三个用量窗口；本地 30 节点采样做历史图，按本窗口已过时间比例给出重置时用量预估，并把 5H→周、周→月的剩余预估折算叠加。无后端、无构建步骤。
 
+线上：<https://yuki-216.github.io/opencodepanel/> · 仓库：<https://github.com/yuki-216/opencodepanel>
+
 ## 快速开始
 
 1. 直接打开 `index.html`，或部署后访问。

@@ -44,6 +44,9 @@
       --chart-limit: rgba(255, 255, 255, 0.16);
       --chart-fill: rgba(255, 255, 255, 0.035);
       --chart-now: rgba(255, 255, 255, 0.30);
+      --conv-used: var(--fg-2);
+      --conv-proj: var(--accent);
+      --conv-rest: rgba(255, 255, 255, 0.18);
       --radius-sm: 6px;
       --radius: 10px;
       --radius-lg: 14px;
@@ -407,9 +410,9 @@
     }
     .conv-num .flag { color: var(--danger); font-size: 12px; }
     .conv-swatch { width: 8px; height: 8px; border-radius: 2px; flex: none; }
-    .conv-swatch--used { background: var(--fg-2); }
-    .conv-swatch--proj { background: var(--accent); }
-    .conv-swatch--rest { background: var(--surface-3); border: 1px solid var(--border-2); }
+    .conv-swatch--used { background: var(--conv-used); }
+    .conv-swatch--proj { background: var(--conv-proj); }
+    .conv-swatch--rest { background: var(--conv-rest); border: 1px solid rgba(255, 255, 255, 0.28); }
 
     .conv-rows { display: flex; flex-direction: column; gap: 10px; }
     .conv-row { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; align-items: start; }
@@ -428,9 +431,9 @@
       background: var(--bg-2); border: 1px solid var(--border);
     }
     .conv-seg { position: absolute; top: 0; bottom: 0; }
-    .conv-seg--used { background: var(--fg-2); }
-    .conv-seg--proj { background: var(--accent); }
-    .conv-seg--rest { background: var(--surface-3); }
+    .conv-seg--used { background: var(--conv-used); }
+    .conv-seg--proj { background: var(--conv-proj); }
+    .conv-seg--rest { background: var(--conv-rest); }
     .conv-scale {
       display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px;
       margin-top: 6px; font-family: var(--font-mono); font-size: 12px; line-height: 1.4;
@@ -1538,7 +1541,7 @@
             ariaParts.push(`${t.w.name}已用 ${fmtPct1(c.used)}`);
             if (c.known) ariaParts.push(`${sourceCode} 折算新增 ${fmtPct1(c.added)}${c.capped ? '，已到上限' : ''}`);
             else ariaParts.push(`${sourceCode} 速度未知，未计预估`);
-            ariaParts.push(`剩余 ${fmtPct1(c.rest)}`);
+            ariaParts.push(`距上限 ${fmtPct1(c.rest)}`);
           } else {
             ariaParts.push(`${t.w.name}数据不可用`);
           }
@@ -1553,7 +1556,7 @@
               <div class="conv-nums">
                 <span class="conv-num"><i class="conv-swatch conv-swatch--used" aria-hidden="true"></i>已用 <b>${usedText}</b></span>
                 <span class="conv-num"><i class="conv-swatch conv-swatch--proj" aria-hidden="true"></i>${sourceCode} 折算 <b>${addedText}</b>${c.capped ? '<span class="flag">达上限</span>' : ''}</span>
-                <span class="conv-num"><i class="conv-swatch conv-swatch--rest" aria-hidden="true"></i>余量 <b>${restText}</b></span>
+                <span class="conv-num"><i class="conv-swatch conv-swatch--rest" aria-hidden="true"></i>距上限 <b>${restText}</b></span>
               </div>
             </div>
             <div class="conv-rows">
@@ -1563,7 +1566,7 @@
                   <div class="conv-track conv-track--use" role="img" aria-label="${aria}">
                     ${conversionSegments(c)}
                   </div>
-                  <div class="conv-scale conv-scale--ends"><span>0%</span><span>100% 上限</span></div>
+                  <div class="conv-scale conv-scale--ends"><span>0%</span><span>上限 100%</span></div>
                 </div>
               </div>
               <div class="conv-row">

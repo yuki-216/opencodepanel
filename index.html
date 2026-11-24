@@ -384,6 +384,12 @@
     .c-axis { fill: var(--muted); font-family: var(--font-mono); font-size: 12px; }
     .c-axis--strong { fill: var(--fg-2); }
     .c-hit-label { fill: var(--danger); font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.04em; }
+    .c-point-group { cursor: crosshair; }
+    .c-point-hit { fill: transparent; pointer-events: all; }
+    .c-point { fill: var(--fg-2); opacity: 0.72; }
+    .c-point-ring { fill: none; stroke: var(--fg); stroke-width: 1; opacity: 0; }
+    .c-point-group:hover .c-point { opacity: 1; }
+    .c-point-group:hover .c-point-ring { opacity: 0.8; }
 
     /* Window conversion */
     .conv-list { display: flex; flex-direction: column; gap: 10px; }
@@ -399,15 +405,16 @@
     .conv-code { font-family: var(--font-mono); font-size: 13px; font-weight: 600; letter-spacing: 0.08em; color: var(--fg); }
     .conv-name { font-size: 12px; color: var(--fg-2); white-space: nowrap; }
     .conv-src { font-family: var(--font-mono); font-size: 12px; color: var(--muted); white-space: nowrap; }
-    .conv-nums { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px 16px; }
+    .conv-nums { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
     .conv-num {
       display: inline-flex; align-items: center; gap: 6px;
+      padding: 2px 7px; margin: -2px 0;
+      border: 1px solid transparent; border-radius: 999px;
       font-size: 12px; color: var(--muted); white-space: nowrap;
+      transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease;
     }
-    .conv-num b {
-      font-family: var(--font-mono); font-size: 13px; font-weight: 500;
-      color: var(--fg); font-variant-numeric: tabular-nums;
-    }
+    .conv-num.is-active { color: var(--fg); background: var(--surface-2); border-color: var(--border-2); }
+    .conv-num.is-active .conv-swatch { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.14); }
     .conv-num .flag { color: var(--danger); font-size: 12px; }
     .conv-swatch { width: 8px; height: 8px; border-radius: 2px; flex: none; }
     .conv-swatch--used { background: var(--conv-used); }
@@ -443,6 +450,24 @@
     .conv-scale span:nth-child(2) { text-align: center; }
     .conv-scale span:nth-child(3) { text-align: right; }
     .conv-scale--ends { display: flex; justify-content: space-between; }
+    .conv-coord { position: relative; margin-top: 5px; height: 21px; }
+    .conv-tick {
+      position: absolute; top: 0; width: 1px; height: 4px;
+      background: var(--border-strong); transform: translateX(-0.5px);
+    }
+    .conv-coord-label {
+      position: absolute; top: 5px; left: 0;
+      font-family: var(--font-mono); font-size: 12px; line-height: 1.2;
+      color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap;
+    }
+    .hover-tip {
+      position: fixed; z-index: 60; pointer-events: none;
+      padding: 5px 8px; border-radius: var(--radius-sm);
+      background: var(--bg-2); border: 1px solid var(--border-2);
+      box-shadow: var(--shadow-pop);
+      font-family: var(--font-mono); font-size: 12px; line-height: 1.4;
+      color: var(--fg); white-space: nowrap;
+    }
 
     .dash-foot {
       display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 18px;
@@ -747,6 +772,7 @@
   </main>
 
   <noscript><p class="noscript">这个仪表盘需要 JavaScript。key 只会在你的浏览器里使用。</p></noscript>
+  <div class="hover-tip" id="hoverTip" hidden></div>
 
   <script>
     (() => {
@@ -825,6 +851,7 @@
       const summarySub = $('summarySub');
       const windowsEl = $('windows');
       const convRows = $('convRows');
+      const hoverTip = $('hoverTip');
       const refreshNote = $('refreshNote');
       const demoNote = $('demoNote');
       const dashTitle = $('dashTitle');
@@ -1005,6 +1032,14 @@
         return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`;
       }
 
+      function fmtPointTime(t, id) {
+        const date = new Date(t);
+        const pad = (n) => String(n).padStart(2, '0');
+        const hm = `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+        if (id === 'rolling') return hm;
+        return `${pad(date.getMonth() + 1)}/${pad(date.getDate())} ${hm}`;
+      }
+
       function downsamplePoints(points, target = 120) {
         if (!points || points.length <= target) return points || [];
         const first = points[0].t;
@@ -1052,6 +1087,33 @@
         if (!text) return '';
         const value = String(text);
         return state.key ? value.split(state.key).join('[redacted]') : value;
+      }
+
+      function positionHoverTip(clientX, clientY) {
+        const x0 = Number.isFinite(clientX) ? clientX : window.innerWidth / 2;
+        const y0 = Number.isFinite(clientY) ? clientY : window.innerHeight / 2;
+        const width = hoverTip.offsetWidth;
+        const height = hoverTip.offsetHeight;
+        let x = x0 + 14;
+        let y = y0 + 14;
+        if (x + width > window.innerWidth - 8) x = x0 - width - 14;
+        if (y + height > window.innerHeight - 8) y = y0 - height - 14;
+        hoverTip.style.left = `${Math.max(8, x)}px`;
+        hoverTip.style.top = `${Math.max(8, y)}px`;
+      }
+
+      function showHoverTip(text, clientX, clientY) {
+        if (!text) {
+          hideHoverTip();
+          return;
+        }
+        hoverTip.textContent = text;
+        hoverTip.hidden = false;
+        positionHoverTip(clientX, clientY);
+      }
+
+      function hideHoverTip() {
+        hoverTip.hidden = true;
       }
 
       /* ------------------------------- errors ------------------------------ */
@@ -1289,11 +1351,22 @@
           out += `<polyline class="c-actual" points="${line.map((point) => `${x(point.t).toFixed(1)},${y(point.p).toFixed(1)}`).join(' ')}"/>`;
         }
 
+        const pointGroup = (t, p, tip) => {
+          const px = x(t).toFixed(1);
+          const py = y(p).toFixed(1);
+          return `<g class="c-point-group" data-tip="${escapeHtml(tip)}">
+            <circle class="c-point-hit" cx="${px}" cy="${py}" r="6"/>
+            <circle class="c-point-ring" cx="${px}" cy="${py}" r="4"/>
+            <circle class="c-point" cx="${px}" cy="${py}" r="2"/>
+          </g>`;
+        };
+        for (const point of history) {
+          out += pointGroup(point.t, point.p, `${fmtPointTime(point.t, a.w.id)} · ${fmtPct1(point.p)}`);
+        }
+
         out += `<line class="c-now" x1="${nowX}" y1="${y0}" x2="${nowX}" y2="${y100}"/>`;
-        out += `<circle class="c-now-dot" cx="${nowX}" cy="${currentY}" r="3"/>`;
         const nowLabelX = Math.max(L + 22, Math.min(R - 22, nowX));
         const nowLabelY = currentY < T + 22 ? currentY + 16 : currentY - 7;
-        out += `<text class="c-axis c-axis--strong" x="${nowLabelX}" y="${nowLabelY}" text-anchor="middle">现在</text>`;
 
         if (a.projected != null && !a.limited && a.remaining > 0) {
           if (a.projected >= 100) {
@@ -1309,6 +1382,13 @@
             out += `<line class="${projectionClass}" x1="${nowX}" y1="${currentY}" x2="${R}" y2="${y(a.projected)}"/>`;
           }
         }
+
+        out += `<g class="c-point-group" data-tip="${escapeHtml(`现在 · ${fmtPct1(a.percent)}`)}">
+          <circle class="c-point-hit" cx="${nowX}" cy="${currentY}" r="7"/>
+          <circle class="c-point-ring" cx="${nowX}" cy="${currentY}" r="5"/>
+          <circle class="c-now-dot" cx="${nowX}" cy="${currentY}" r="3"/>
+        </g>`;
+        out += `<text class="c-axis c-axis--strong" x="${nowLabelX}" y="${nowLabelY}" text-anchor="middle">现在</text>`;
 
         return `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true" focusable="false">${out}</svg>`;
       }
@@ -1511,21 +1591,74 @@
 
       function conversionSegments(c) {
         if (!c.available) return '';
+        const sourceCode = c.source ? c.source.w.code : '短窗口';
         const segs = [];
-        if (c.used > 0.05) segs.push({ cls: 'used', start: 0, end: c.used });
+        if (c.used > 0.05) segs.push({ cls: 'used', start: 0, end: c.used, tip: `已用 ${fmtPct1(c.used)}` });
 
         const estEnd = c.used + (c.known ? c.added : 0);
-        if (c.known && c.added > 0.05) segs.push({ cls: 'proj', start: c.used, end: estEnd });
+        if (c.known && c.added > 0.05) {
+          segs.push({ cls: 'proj', start: c.used, end: estEnd, tip: `${sourceCode} 折算 +${fmtPct1(c.added)}` });
+        }
 
         const capEnd = c.used + (c.capKnown ? c.upperDrawn : (c.known ? c.added : 0));
-        if (c.capKnown && capEnd - estEnd > 0.05) segs.push({ cls: 'cap', start: estEnd, end: capEnd });
+        if (c.capKnown && capEnd - estEnd > 0.05) {
+          segs.push({ cls: 'cap', start: estEnd, end: capEnd, tip: `${sourceCode} 折算上限 +${fmtPct1(capEnd - estEnd)}` });
+        }
 
         return segs.map((seg) => {
           const leftPad = seg.start > 0.001 ? 2 : 0;
           const rightPad = seg.end < 99.999 ? 2 : 0;
           const style = `left:calc(${seg.start.toFixed(3)}% + ${leftPad}px);right:calc(${(100 - seg.end).toFixed(3)}% + ${rightPad}px)`;
-          return `<span class="conv-seg conv-seg--${seg.cls}" aria-hidden="true" style="${style}"></span>`;
+          return `<span class="conv-seg conv-seg--${seg.cls}" data-seg="${seg.cls}" data-tip="${escapeHtml(seg.tip)}" aria-hidden="true" style="${style}"></span>`;
         }).join('');
+      }
+
+      function conversionCoordHtml(c) {
+        if (!c.available) return '';
+        const estEnd = c.used + (c.known ? c.added : 0);
+        const capEnd = c.used + (c.capKnown ? c.upperDrawn : 0);
+        const values = [0, c.used, estEnd, capEnd, 100];
+        const unique = [];
+        for (const raw of values) {
+          if (!Number.isFinite(raw)) continue;
+          const value = Math.max(0, Math.min(100, raw));
+          if (unique.some((existing) => Math.abs(existing - value) < 0.05)) continue;
+          unique.push(value);
+        }
+        unique.sort((a, b) => a - b);
+        return unique.map((value) => {
+          const label = value <= 0.05 ? '0%' : value >= 99.95 ? '100%' : fmtPct1(value);
+          return `<span class="conv-tick" style="left:${value.toFixed(3)}%" aria-hidden="true"></span>
+            <span class="conv-coord-label" data-x="${value.toFixed(3)}">${escapeHtml(label)}</span>`;
+        }).join('');
+      }
+
+      function layoutConvCoords() {
+        document.querySelectorAll('.conv-coord').forEach((axis) => {
+          const labels = [...axis.querySelectorAll('.conv-coord-label')];
+          if (!labels.length) {
+            axis.style.height = '0px';
+            return;
+          }
+          const width = axis.clientWidth;
+          if (!width) return;
+          const rowEnds = [];
+          for (const label of labels) {
+            const x = Number(label.dataset.x);
+            if (!Number.isFinite(x)) continue;
+            const labelWidth = label.offsetWidth;
+            let left = (x / 100) * width - labelWidth / 2;
+            if (x <= 0.5) left = 0;
+            else if (x >= 99.5) left = width - labelWidth;
+            left = Math.max(0, Math.min(width - labelWidth, left));
+            let row = 0;
+            while (rowEnds[row] != null && left < rowEnds[row] + 4) row++;
+            rowEnds[row] = left + labelWidth;
+            label.style.left = `${left}px`;
+            label.style.top = `${5 + row * 15}px`;
+          }
+          axis.style.height = `${5 + rowEnds.length * 15}px`;
+        });
       }
 
       function renderConversions(conversions) {
@@ -1533,9 +1666,6 @@
           const t = c.target;
           const s = c.source;
           const available = c.available;
-          const usedText = available ? fmtPct1(c.used) : '—';
-          const addedText = available && c.known ? `+${fmtPct1(c.added)}` : '—';
-          const capText = !available || !c.capKnown ? '—' : fmtPct1(c.upperLimit);
           const sourceText = conversionSourceText(c);
           const timePos = c.elapsedRatio == null ? 0 : (c.elapsedRatio * 100).toFixed(2);
           const startLabel = available ? fmtAxisTime(t.startMs, t.w.id) : '—';
@@ -1561,9 +1691,9 @@
                 <span class="conv-src">· ${sourceText}</span>
               </div>
               <div class="conv-nums">
-                <span class="conv-num"><i class="conv-swatch conv-swatch--used" aria-hidden="true"></i>已用 <b>${usedText}</b></span>
-                <span class="conv-num"><i class="conv-swatch conv-swatch--proj" aria-hidden="true"></i>${sourceCode} 折算 <b>${addedText}</b>${c.estCapped ? '<span class="flag">至上限</span>' : ''}</span>
-                <span class="conv-num"><i class="conv-swatch conv-swatch--cap" aria-hidden="true"></i>${sourceCode} 折算上限 <b>${capText}</b>${c.capped ? '<span class="flag">封顶</span>' : ''}</span>
+                <span class="conv-num" data-seg="used"><i class="conv-swatch conv-swatch--used" aria-hidden="true"></i>已用</span>
+                <span class="conv-num" data-seg="proj"><i class="conv-swatch conv-swatch--proj" aria-hidden="true"></i>${sourceCode} 折算${c.estCapped ? '<span class="flag">至上限</span>' : ''}</span>
+                <span class="conv-num" data-seg="cap"><i class="conv-swatch conv-swatch--cap" aria-hidden="true"></i>${sourceCode} 折算上限${c.capped ? '<span class="flag">封顶</span>' : ''}</span>
               </div>
             </div>
             <div class="conv-rows">
@@ -1573,7 +1703,7 @@
                   <div class="conv-track conv-track--use" role="img" aria-label="${aria}">
                     ${conversionSegments(c)}
                   </div>
-                  <div class="conv-scale conv-scale--ends"><span>0%</span><span>上限 100%</span></div>
+                  <div class="conv-coord">${conversionCoordHtml(c)}</div>
                 </div>
               </div>
               <div class="conv-row">
@@ -1589,6 +1719,7 @@
             </div>
           </article>`;
         }).join('');
+        layoutConvCoords();
       }
 
       /* ----------------------------- rendering ----------------------------- */
@@ -1609,6 +1740,7 @@
 
       function renderAll() {
         if (!state.data) return;
+        hideHoverTip();
         const now = Date.now();
         const analyses = WINDOWS.map((w) => analyze(w, state.data[w.id], now, state.history));
         const summary = buildSummary(analyses);
@@ -2117,6 +2249,59 @@
           renderConnection();
           renderBanner();
         });
+
+        const setLegendActive = (card, seg) => {
+          if (!card) return;
+          card.querySelectorAll('.conv-num').forEach((item) => {
+            item.classList.toggle('is-active', !!seg && item.dataset.seg === seg);
+          });
+        };
+
+        convRows.addEventListener('pointerover', (event) => {
+          const target = event.target;
+          const seg = target instanceof Element ? target.closest('.conv-seg') : null;
+          if (!seg) return;
+          setLegendActive(seg.closest('.conv'), seg.dataset.seg);
+          showHoverTip(seg.dataset.tip, event.clientX, event.clientY);
+        });
+        convRows.addEventListener('pointermove', (event) => {
+          const target = event.target;
+          const seg = target instanceof Element ? target.closest('.conv-seg') : null;
+          if (seg) positionHoverTip(event.clientX, event.clientY);
+        });
+        convRows.addEventListener('pointerout', (event) => {
+          const target = event.target;
+          const seg = target instanceof Element ? target.closest('.conv-seg') : null;
+          if (!seg) return;
+          if (event.relatedTarget instanceof Node && seg.contains(event.relatedTarget)) return;
+          setLegendActive(seg.closest('.conv'), null);
+          hideHoverTip();
+        });
+
+        windowsEl.addEventListener('pointerover', (event) => {
+          const target = event.target;
+          const point = target instanceof Element ? target.closest('.c-point-group') : null;
+          if (!point) return;
+          showHoverTip(point.dataset.tip, event.clientX, event.clientY);
+        });
+        windowsEl.addEventListener('pointermove', (event) => {
+          const target = event.target;
+          const point = target instanceof Element ? target.closest('.c-point-group') : null;
+          if (point) positionHoverTip(event.clientX, event.clientY);
+        });
+        windowsEl.addEventListener('pointerout', (event) => {
+          const target = event.target;
+          const point = target instanceof Element ? target.closest('.c-point-group') : null;
+          if (!point) return;
+          if (event.relatedTarget instanceof Node && point.contains(event.relatedTarget)) return;
+          hideHoverTip();
+        });
+
+        document.addEventListener('pointerdown', (event) => {
+          const target = event.target;
+          if (!(target instanceof Element) || !target.closest('.conv-seg, .c-point-group')) hideHoverTip();
+        });
+        window.addEventListener('scroll', hideHoverTip, { passive: true });
       }
 
       /* -------------------------------- init ------------------------------- */
@@ -2127,6 +2312,7 @@
         if (window.ResizeObserver) {
           const observer = new ResizeObserver(() => {
             if (state.lastAnalyses) fitCharts(state.lastAnalyses);
+            layoutConvCoords();
           });
           observer.observe(windowsEl);
         }

@@ -46,7 +46,7 @@
       --chart-now: rgba(255, 255, 255, 0.30);
       --conv-used: var(--fg-2);
       --conv-proj: var(--accent);
-      --conv-rest: rgba(255, 255, 255, 0.18);
+      --conv-cap: rgba(200, 242, 106, 0.30);
       --radius-sm: 6px;
       --radius: 10px;
       --radius-lg: 14px;
@@ -412,7 +412,7 @@
     .conv-swatch { width: 8px; height: 8px; border-radius: 2px; flex: none; }
     .conv-swatch--used { background: var(--conv-used); }
     .conv-swatch--proj { background: var(--conv-proj); }
-    .conv-swatch--rest { background: var(--conv-rest); border: 1px solid rgba(255, 255, 255, 0.28); }
+    .conv-swatch--cap { background: var(--conv-cap); border: 1px solid rgba(200, 242, 106, 0.45); }
 
     .conv-rows { display: flex; flex-direction: column; gap: 10px; }
     .conv-row { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; align-items: start; }
@@ -433,7 +433,7 @@
     .conv-seg { position: absolute; top: 0; bottom: 0; }
     .conv-seg--used { background: var(--conv-used); }
     .conv-seg--proj { background: var(--conv-proj); }
-    .conv-seg--rest { background: var(--conv-rest); }
+    .conv-seg--cap { background: var(--conv-cap); }
     .conv-scale {
       display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px;
       margin-top: 6px; font-family: var(--font-mono); font-size: 12px; line-height: 1.4;
@@ -726,7 +726,7 @@
         <section class="section" aria-labelledby="convTitle" data-od-id="conversion">
           <div class="section-head">
             <h2 id="convTitle">窗口折算</h2>
-            <p>以本窗口已用为底，叠加更短窗口按当前速度的剩余预估；超出上限截断。</p>
+            <p>已用 + 短窗口预估；第三段画到短窗口剩余上限，超出本窗口截断。</p>
           </div>
           <div class="conv-list" id="convRows"></div>
         </section>
@@ -1449,9 +1449,13 @@
             used: null,
             elapsedRatio: null,
             added: 0,
-            rest: null,
+            cap: 0,
+            upperDrawn: 0,
+            upperLimit: 0,
+            capKnown: false,
             known: false,
             capped: false,
+            estCapped: false,
             horizonMs: 0,
           };
           if (!t || !t.available) return out;
@@ -1459,12 +1463,19 @@
           const used = Math.max(0, Math.min(100, t.percent));
           out.used = used;
           out.elapsedRatio = Math.max(0, Math.min(1, (now - t.startMs) / Math.max(1, t.windowMs)));
-          out.rest = Math.max(0, 100 - used);
+          const room = Math.max(0, 100 - used);
 
           if (!s || !s.available) return out;
 
           const horizonMs = Math.max(0, Math.min(s.resetMs, t.resetMs) - now);
           out.horizonMs = horizonMs;
+
+          const cap = Math.max(0, (100 - s.percent) * (s.w.cap / t.w.cap));
+          out.cap = cap;
+          out.capKnown = true;
+          out.upperDrawn = Math.min(cap, room);
+          out.upperLimit = used + out.upperDrawn;
+          out.capped = cap > room + 1e-9;
 
           let rate = null;
           if (s.status === 'limited') rate = 0;
@@ -1475,10 +1486,8 @@
 
           out.known = true;
           const raw = rate * (s.w.cap / t.w.cap) * horizonMs;
-          const room = Math.max(0, 100 - used);
-          out.added = Math.min(raw, room);
-          out.capped = raw > room + 1e-9;
-          out.rest = Math.max(0, 100 - used - out.added);
+          out.added = Math.min(raw, cap, room);
+          out.estCapped = raw > cap + 1e-9;
           return out;
         });
       }
@@ -1504,20 +1513,17 @@
         if (!c.available) return '';
         const segs = [];
         if (c.used > 0.05) segs.push({ cls: 'used', start: 0, end: c.used });
-        const projVisible = c.known && c.added > 0.05;
-        if (projVisible) segs.push({ cls: 'proj', start: c.used, end: c.used + c.added });
-        const restStart = c.used + (projVisible ? c.added : 0);
-        if (c.rest > 0.05) segs.push({ cls: 'rest', start: restStart, end: 100 });
 
-        return segs.map((seg, index) => {
-          const first = index === 0;
-          const last = index === segs.length - 1;
-          const width = (seg.end - seg.start).toFixed(3);
-          let style;
-          if (first && last) style = 'left:0;right:0';
-          else if (first) style = `left:0;width:calc(${width}% - 2px)`;
-          else if (last) style = `left:calc(${seg.start.toFixed(3)}% + 2px);right:0`;
-          else style = `left:calc(${seg.start.toFixed(3)}% + 2px);width:calc(${width}% - 4px)`;
+        const estEnd = c.used + (c.known ? c.added : 0);
+        if (c.known && c.added > 0.05) segs.push({ cls: 'proj', start: c.used, end: estEnd });
+
+        const capEnd = c.used + (c.capKnown ? c.upperDrawn : (c.known ? c.added : 0));
+        if (c.capKnown && capEnd - estEnd > 0.05) segs.push({ cls: 'cap', start: estEnd, end: capEnd });
+
+        return segs.map((seg) => {
+          const leftPad = seg.start > 0.001 ? 2 : 0;
+          const rightPad = seg.end < 99.999 ? 2 : 0;
+          const style = `left:calc(${seg.start.toFixed(3)}% + ${leftPad}px);right:calc(${(100 - seg.end).toFixed(3)}% + ${rightPad}px)`;
           return `<span class="conv-seg conv-seg--${seg.cls}" aria-hidden="true" style="${style}"></span>`;
         }).join('');
       }
@@ -1529,7 +1535,7 @@
           const available = c.available;
           const usedText = available ? fmtPct1(c.used) : '—';
           const addedText = available && c.known ? `+${fmtPct1(c.added)}` : '—';
-          const restText = !available ? '—' : (c.known ? fmtPct1(c.rest) : `≤${fmtPct1(c.rest)}`);
+          const capText = !available || !c.capKnown ? '—' : fmtPct1(c.upperLimit);
           const sourceText = conversionSourceText(c);
           const timePos = c.elapsedRatio == null ? 0 : (c.elapsedRatio * 100).toFixed(2);
           const startLabel = available ? fmtAxisTime(t.startMs, t.w.id) : '—';
@@ -1539,9 +1545,10 @@
           const ariaParts = [];
           if (available) {
             ariaParts.push(`${t.w.name}已用 ${fmtPct1(c.used)}`);
-            if (c.known) ariaParts.push(`${sourceCode} 折算新增 ${fmtPct1(c.added)}${c.capped ? '，已到上限' : ''}`);
+            if (c.known) ariaParts.push(`${sourceCode} 折算新增 ${fmtPct1(c.added)}${c.estCapped ? '，已达短窗口剩余上限' : ''}`);
             else ariaParts.push(`${sourceCode} 速度未知，未计预估`);
-            ariaParts.push(`距上限 ${fmtPct1(c.rest)}`);
+            if (c.capKnown) ariaParts.push(`${sourceCode} 剩余上限折算位置 ${fmtPct1(c.upperLimit)}${c.capped ? '，超出本窗口上限' : ''}`);
+            else ariaParts.push(`${sourceCode} 剩余上限不可用`);
           } else {
             ariaParts.push(`${t.w.name}数据不可用`);
           }
@@ -1555,8 +1562,8 @@
               </div>
               <div class="conv-nums">
                 <span class="conv-num"><i class="conv-swatch conv-swatch--used" aria-hidden="true"></i>已用 <b>${usedText}</b></span>
-                <span class="conv-num"><i class="conv-swatch conv-swatch--proj" aria-hidden="true"></i>${sourceCode} 折算 <b>${addedText}</b>${c.capped ? '<span class="flag">达上限</span>' : ''}</span>
-                <span class="conv-num"><i class="conv-swatch conv-swatch--rest" aria-hidden="true"></i>距上限 <b>${restText}</b></span>
+                <span class="conv-num"><i class="conv-swatch conv-swatch--proj" aria-hidden="true"></i>${sourceCode} 折算 <b>${addedText}</b>${c.estCapped ? '<span class="flag">至上限</span>' : ''}</span>
+                <span class="conv-num"><i class="conv-swatch conv-swatch--cap" aria-hidden="true"></i>${sourceCode} 折算上限 <b>${capText}</b>${c.capped ? '<span class="flag">封顶</span>' : ''}</span>
               </div>
             </div>
             <div class="conv-rows">

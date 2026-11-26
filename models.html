@@ -1,0 +1,1161 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src https://opencode.ai https://modeldial.com; img-src data:; base-uri 'none'; form-action 'none'"">
+<title>OCG · 模型账本</title>
+<style>
+
+    :root {
+      color-scheme: dark;
+      --bg: #08090a;
+      --bg-2: #0b0d10;
+      --surface: rgba(255, 255, 255, 0.025);
+      --surface-2: rgba(255, 255, 255, 0.045);
+      --surface-3: rgba(255, 255, 255, 0.075);
+      --fg: #f2f3f5;
+      --fg-2: #c3c7ce;
+      --muted: #9298a2;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-2: rgba(255, 255, 255, 0.13);
+      --border-strong: #5a606a;
+      --accent: #c8f26a;
+      --accent-2: #d8ff87;
+      --accent-fg: #0a0c08;
+      --ok: #63e6a8;
+      --warn: #f0b44c;
+      --danger: #ff6b6b;
+      --ok-bg: rgba(99, 230, 168, 0.08);
+      --ok-border: rgba(99, 230, 168, 0.24);
+      --warn-bg: rgba(240, 180, 76, 0.08);
+      --warn-border: rgba(240, 180, 76, 0.26);
+      --danger-bg: rgba(255, 107, 107, 0.08);
+      --danger-border: rgba(255, 107, 107, 0.28);
+      --grid-line: rgba(255, 255, 255, 0.022);
+      --page-glow: rgba(255, 255, 255, 0.05);
+      --scanline: rgba(255, 255, 255, 0.28);
+      --focus-halo: rgba(255, 255, 255, 0.10);
+      --shadow-card: 0 30px 80px rgba(0, 0, 0, 0.35);
+      --shadow-pop: 0 20px 50px rgba(0, 0, 0, 0.50);
+      --chart-grid: rgba(255, 255, 255, 0.06);
+      --chart-limit: rgba(255, 255, 255, 0.16);
+      --chart-fill: rgba(255, 255, 255, 0.035);
+      --chart-now: rgba(255, 255, 255, 0.30);
+      --conv-used: var(--fg-2);
+      --conv-proj: var(--accent);
+      --conv-cap: rgba(200, 242, 106, 0.30);
+      --radius-sm: 6px;
+      --radius: 10px;
+      --radius-lg: 14px;
+      --font-sans: "Inter", "Segoe UI Variable Display", "Segoe UI", "Microsoft YaHei UI", "PingFang SC", system-ui, sans-serif;
+      --font-mono: "Berkeley Mono", "Cascadia Mono", "Cascadia Code", "SF Mono", "Consolas", ui-monospace, monospace;
+      --maxw: 1180px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      background-color: var(--bg);
+      background-image:
+        radial-gradient(1000px 520px at 50% -12%, var(--page-glow), transparent 70%),
+        linear-gradient(var(--grid-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+      background-size: auto, 48px 48px, 48px 48px;
+      color: var(--fg);
+      font-family: var(--font-sans);
+      font-size: 15px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0 0 auto;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--scanline), transparent);
+      z-index: 50;
+      pointer-events: none;
+    }
+    ::selection { background: var(--accent); color: var(--accent-fg); }
+    h1, h2, h3, p { margin: 0; }
+    h1, h2, h3 { font-weight: 500; letter-spacing: -0.02em; }
+    a { color: inherit; }
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+    }
+    .sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+    .icon {
+      width: 16px; height: 16px; flex: none; display: inline-block; vertical-align: middle;
+      fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+    }
+    .icon--sm { width: 14px; height: 14px; }
+    .icon--lg { width: 18px; height: 18px; }
+    .noscript { padding: 24px; color: var(--fg-2); font-size: 14px; text-align: center; }
+    .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.4;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex: none; }
+
+    /* Buttons and form controls */
+    button, input { font: inherit; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      min-height: 42px; padding: 0 16px; border-radius: var(--radius-sm);
+      border: 1px solid transparent; cursor: pointer; font-size: 14px; font-weight: 500;
+      letter-spacing: 0.01em; text-decoration: none; white-space: nowrap;
+      transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, transform 150ms ease;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+    .btn:disabled:active { transform: none; }
+    .btn-primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+    .btn-primary:hover:not(:disabled) { background: var(--accent-2); border-color: var(--accent-2); }
+    .btn-ghost { background: transparent; color: var(--fg-2); border-color: var(--border-2); }
+    .btn-ghost:hover:not(:disabled) { background: var(--surface); color: var(--fg); border-color: var(--border-strong); }
+    .icon-btn {
+      width: 36px; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
+      border-radius: var(--radius-sm); border: 1px solid transparent; background: transparent;
+      color: var(--muted); cursor: pointer; transition: background-color 150ms ease, color 150ms ease;
+    }
+    .icon-btn:hover { color: var(--fg); background: var(--surface-2); }
+    .icon-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    :focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+    .icon-arrow { transition: transform 150ms ease; }
+    .btn-primary:hover .icon-arrow { transform: translateX(2px); }
+
+    /* Top bar */
+    .topbar {
+      position: sticky; top: 0; z-index: 20;
+      background: rgba(8, 9, 10, 0.82);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+    }
+    .topbar-inner {
+      width: min(var(--maxw), calc(100% - 48px)); margin: 0 auto; height: 56px;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .brand-mark { width: 20px; height: 20px; color: var(--fg); flex: none; }
+    .brand-dot { stroke: var(--accent); }
+    .brand-name { font-family: var(--font-mono); font-size: 13px; font-weight: 600; letter-spacing: 0.10em; }
+    .brand-div { width: 1px; height: 16px; background: var(--border-2); flex: none; }
+    .topbar-title { font-size: 13px; color: var(--fg-2); white-space: nowrap; }
+    .topbar-right { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .conn { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+    .conn .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+    .conn--live { color: var(--fg-2); }
+    .conn--live .dot { background: var(--ok); box-shadow: 0 0 0 3px var(--ok-bg); }
+    .conn--demo { color: var(--fg-2); }
+    .conn--demo .dot { background: var(--warn); box-shadow: 0 0 0 3px var(--warn-bg); }
+    .conn--error { color: var(--danger); }
+    .conn--error .dot { background: var(--danger); box-shadow: 0 0 0 3px var(--danger-bg); }
+    .sync {
+      font-family: var(--font-mono); font-size: 12px; color: var(--muted);
+      min-width: 92px; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums;
+    }
+    .menu { position: relative; }
+    .menu summary { list-style: none; }
+    .menu summary::-webkit-details-marker { display: none; }
+    .menu[open] > summary { background: var(--surface-2); color: var(--fg); }
+    .menu-pop {
+      position: absolute; right: 0; top: calc(100% + 8px); width: 224px;
+      background: var(--bg-2); border: 1px solid var(--border-2); border-radius: var(--radius);
+      box-shadow: var(--shadow-pop); padding: 6px; z-index: 30;
+    }
+    .menu-pop button, .menu-pop a {
+      display: flex; align-items: center; gap: 9px; width: 100%; min-height: 36px;
+      padding: 0 9px; border: 0; border-radius: var(--radius-sm); background: transparent;
+      color: var(--fg-2); font-size: 12px; text-align: left; text-decoration: none; cursor: pointer;
+    }
+    .menu-pop a { justify-content: space-between; }
+    .menu-pop button:hover, .menu-pop a:hover { background: var(--surface-2); color: var(--fg); }
+    .menu-pop .menu-danger { color: var(--danger); }
+    .menu-pop .menu-danger:hover { background: var(--danger-bg); color: var(--danger); }
+
+    /* Page switch — 两个页面共用的顶部导航 */
+    .page-switch { display: flex; align-items: center; gap: 2px; padding: 2px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+    .page-switch a {
+      display: inline-flex; align-items: center; min-height: 28px; padding: 0 10px; border-radius: 4px;
+      color: var(--muted); font-size: 12px; text-decoration: none; white-space: nowrap;
+      transition: background-color 150ms ease, color 150ms ease;
+    }
+    .page-switch a:hover { color: var(--fg); background: var(--surface-2); }
+    .page-switch a[aria-current="page"] { background: var(--surface-3); color: var(--fg); }
+    .menu-sep { height: 1px; background: var(--border); margin: 5px 2px; }
+
+    /* Layout */
+    .dash-wrap { width: min(var(--maxw), calc(100% - 48px)); margin: 0 auto; padding: 24px 0 40px; }
+
+    
+    /* ---------- Ledger: page scaffolding ---------- */
+    .ledger-wrap { width: min(var(--maxw), calc(100% - 48px)); margin: 0 auto; padding: 26px 0 44px; min-width: 0; }
+
+    .ledger-head { padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+    .ledger-head .eyebrow { display: flex; align-items: center; gap: 7px; margin-bottom: 10px; }
+    .ledger-head h1 { font-size: clamp(26px, 3vw, 34px); line-height: 1.2; letter-spacing: -0.025em; color: var(--fg); }
+    .ledger-head .lede { margin-top: 9px; max-width: 68ch; font-size: 13px; line-height: 1.65; color: var(--muted); text-wrap: pretty; }
+
+    .kpi-strip { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-bottom: 1px solid var(--border); }
+    .kpi { padding: 16px 18px 16px 0; border-right: 1px solid var(--border); min-width: 0; }
+    .kpi:not(:first-child) { padding-left: 18px; }
+    .kpi:last-child { border-right: 0; padding-right: 0; }
+    .kpi-k { display: block; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+    .kpi-v { display: block; font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 26px; line-height: 1.1; letter-spacing: -0.03em; color: var(--fg); }
+    .kpi-v--accent { color: var(--accent); }
+    .kpi-n { display: block; margin-top: 5px; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; padding: 16px 0 14px; }
+    .tool-field { display: flex; align-items: center; gap: 8px; }
+    .tool-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+    .search-wrap { position: relative; display: flex; align-items: center; }
+    .search-wrap .icon { position: absolute; left: 9px; color: var(--muted); pointer-events: none; }
+    #q { width: 200px; min-height: 34px; padding: 0 10px 0 30px; background: var(--surface); border: 1px solid var(--border-2); border-radius: var(--radius-sm); color: var(--fg); font-size: 13px; font-family: var(--font-sans); }
+    #q::placeholder { color: var(--muted); }
+    #q:focus-visible { outline: 2px solid var(--fg); outline-offset: 1px; border-color: var(--border-strong); }
+
+    .seg { display: inline-flex; padding: 2px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+    .seg button { min-height: 28px; padding: 0 11px; border: 0; border-radius: 4px; background: transparent; color: var(--muted); font-size: 12px; cursor: pointer; white-space: nowrap; transition: background-color 150ms ease, color 150ms ease; }
+    .seg button:hover { color: var(--fg); background: var(--surface-2); }
+    .seg button[aria-pressed="true"] { background: var(--surface-3); color: var(--fg); }
+    .toolbar .spacer { flex: 1 1 auto; }
+
+    .frame { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-2); overflow: clip; max-width: 100%; }
+    .table-scroll { overflow-x: auto; overscroll-behavior-x: contain; max-width: 100%; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th { position: sticky; top: 0; z-index: 2; background: #0e1013; border-bottom: 1px solid var(--border-2); padding: 9px 12px; text-align: right; white-space: nowrap; font-family: var(--font-mono); font-size: 10.5px; font-weight: 500; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+    thead th:first-child { text-align: left; padding-left: 16px; }
+    th.sortable { cursor: pointer; user-select: none; }
+    th.sortable:hover { color: var(--fg); }
+    th[aria-sort="ascending"], th[aria-sort="descending"] { color: var(--fg); }
+    .sort-mark { display: inline-block; margin-left: 4px; color: var(--accent); font-size: 10px; }
+
+    tbody tr[data-slug] { border-bottom: 1px solid var(--border); }
+    tbody tr[data-slug]:last-child { border-bottom: 0; }
+    tbody tr[data-slug]:hover { background: var(--surface); }
+    tbody tr[data-slug].is-open { background: var(--surface-2); }
+
+    tbody td { padding: 10px 12px; text-align: right; white-space: nowrap; font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--fg-2); border: 0; }
+    tbody td.model-td { text-align: left; padding-left: 16px; white-space: normal; }
+
+    .model-name { display: block; font-family: var(--font-sans); font-size: 13.5px; font-weight: 500; color: var(--fg); line-height: 1.3; }
+    .model-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 3px; }
+    .model-slug { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.02em; color: var(--muted); }
+
+    .tag { display: inline-flex; align-items: center; height: 16px; padding: 0 5px; border-radius: 3px; font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; border: 1px solid currentColor; line-height: 1; }
+    .tag--family { color: var(--warn); }
+    .tag--none { color: var(--muted); }
+    .tag--free { color: var(--ok); }
+    .tag--unpub { color: var(--muted); border-style: dashed; }
+    .tag--conflict { color: var(--danger); }
+
+    .num-strong { color: var(--fg); font-weight: 500; }
+    .dash { color: var(--muted); }
+
+    .bar-cell { min-width: 104px; }
+    .bar { display: block; height: 3px; margin-top: 5px; border-radius: 2px; background: var(--surface-3); overflow: hidden; }
+    .bar-fill { display: block; height: 100%; background: var(--fg-2); border-radius: 2px; }
+    tr[data-rank="1"] .bar-fill { background: var(--accent); }
+
+    .expand-btn { width: 22px; height: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--muted); cursor: pointer; transition: background-color 150ms ease, color 150ms ease; }
+    .expand-btn:hover { color: var(--fg); background: var(--surface-3); }
+    .expand-btn svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform 160ms ease; }
+    tr.is-open .expand-btn svg { transform: rotate(90deg); }
+
+    tr.detail-row > td { padding: 0; border-bottom: 1px solid var(--border-2); background: rgba(255, 255, 255, 0.018); white-space: normal; text-align: left; }
+    .detail { display: grid; grid-template-columns: repeat(auto-fit, minmax(196px, 1fr)); gap: 4px 30px; padding: 16px 18px 18px 30px; }
+    .detail-group h4 { margin: 0 0 8px; font-family: var(--font-mono); font-size: 10.5px; font-weight: 500; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+    .kv { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 4px 0; border-bottom: 1px dotted var(--border); }
+    .kv:last-child { border-bottom: 0; }
+    .kv-k { color: var(--muted); font-size: 11.5px; }
+    .kv-v { font-family: var(--font-mono); font-size: 12px; color: var(--fg); font-variant-numeric: tabular-nums; }
+
+    .axis-list { margin: 0; padding: 0; list-style: none; }
+    .axis { display: grid; grid-template-columns: 3.6rem 1fr 2.2rem; align-items: center; gap: 8px; padding: 3px 0; }
+    .axis-k { color: var(--muted); font-size: 11px; }
+    .axis-track { display: block; height: 3px; border-radius: 2px; background: var(--surface-3); overflow: hidden; }
+    .axis-fill { display: block; height: 100%; background: var(--fg-2); }
+    .axis-v { font-family: var(--font-mono); font-size: 11px; text-align: right; color: var(--fg); font-variant-numeric: tabular-nums; }
+
+    .detail-note { grid-column: 1 / -1; margin-top: 12px; padding: 9px 12px; border-left: 2px solid var(--warn); background: var(--warn-bg); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; font-size: 11.5px; line-height: 1.6; color: var(--fg-2); }
+    .detail-note--danger { border-left-color: var(--danger); background: var(--danger-bg); }
+
+    .empty { padding: 40px 16px; text-align: center; color: var(--muted); font-size: 13px; }
+
+    .method { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 22px 34px; margin-top: 26px; padding-top: 22px; border-top: 1px solid var(--border); }
+    .method h3 { font-size: 13.5px; font-weight: 500; letter-spacing: -0.005em; color: var(--fg); margin-bottom: 7px; }
+    .method p { font-size: 12px; line-height: 1.65; color: var(--muted); margin-bottom: 8px; text-wrap: pretty; }
+    .formula { display: block; padding: 9px 11px; border-radius: var(--radius-sm); background: var(--surface); border: 1px solid var(--border); border-left: 2px solid var(--accent); font-family: var(--font-mono); font-size: 11px; line-height: 1.75; color: var(--fg-2); white-space: pre-wrap; overflow-x: auto; }
+
+    .dash-foot--ledger { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: baseline; margin-top: 26px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 11px; color: var(--muted); }
+    .dash-foot--ledger a { color: var(--fg-2); text-decoration: none; border-bottom: 1px solid var(--border-2); }
+    .dash-foot--ledger a:hover { color: var(--fg); border-bottom-color: var(--border-strong); }
+    .foot-sep { color: var(--border-strong); }
+
+    @media (max-width: 1080px) {
+      .hide-md { display: none; }
+      .kpi-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .kpi:nth-child(3) { border-right: 0; }
+      .kpi:nth-child(n + 4) { border-top: 1px solid var(--border); }
+    }
+    @media (max-width: 900px) {
+      .hide-sm { display: none; }
+      .ledger-wrap { width: calc(100% - 36px); }
+      .kpi-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .kpi:nth-child(2n) { border-right: 0; }
+      .kpi:nth-child(n + 3) { border-top: 1px solid var(--border); }
+      .detail { padding-left: 18px; }
+    }
+    @media (max-width: 760px) {
+      #q { width: 100%; }
+      .tool-field:first-child { flex: 1 1 100%; }
+      /* topbar 空间紧张：只留状态圆点，隐藏文字与同步时间 */
+      #connLabel { display: none; }
+      .topbar-right .sync { display: none; }
+      .topbar-title { display: none; }
+      .brand-div { display: none; }
+    }
+    @media (max-width: 560px) {
+      .page-switch a { padding: 0 8px; font-size: 11.5px; }
+      .ledger-wrap { width: calc(100% - 28px); }
+      .kpi-strip { grid-template-columns: 1fr 1fr; }
+      .kpi { padding: 13px 12px 13px 0; }
+      .kpi:not(:first-child) { padding-left: 12px; }
+      .kpi-v { font-size: 22px; }
+      .detail { grid-template-columns: 1fr; padding: 14px; }
+      .toolbar { gap: 8px; }
+    }
+
+</style>
+</head>
+
+<body>
+  <svg class="sprite" aria-hidden="true" focusable="false">
+    <symbol id="i-key" viewBox="0 0 24 24">
+      <circle cx="8" cy="12" r="3.5"/>
+      <path d="M11.5 12H21M17 12v3M20 12v2.5"/>
+    </symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24">
+      <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6S2.5 12 2.5 12Z"/>
+      <circle cx="12" cy="12" r="2.8"/>
+    </symbol>
+    <symbol id="i-eye-off" viewBox="0 0 24 24">
+      <path d="m3 3 18 18"/>
+      <path d="M10.6 6.2A10.9 10.9 0 0 1 12 6c6 0 9.5 6 9.5 6a17 17 0 0 1-3.1 3.8M6.6 6.7C4 8.5 2.5 12 2.5 12s3.5 6 9.5 6a10.6 10.6 0 0 0 4.2-.9"/>
+      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>
+    </symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24">
+      <path d="M20 11a8 8 0 1 0-2.3 5.7"/>
+      <path d="M20 4v7h-7"/>
+    </symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24">
+      <path d="M5 12h13M13 6l6 6-6 6"/>
+    </symbol>
+    <symbol id="i-external" viewBox="0 0 24 24">
+      <path d="M14 5h5v5M19 5l-8 8"/>
+      <path d="M18 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4"/>
+    </symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24">
+      <path d="M12 3 5 6v5c0 4.4 3 7.4 7 9 4-1.6 7-4.6 7-9V6l-7-3Z"/>
+      <path d="m9 12 2 2 4-4"/>
+    </symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24">
+      <rect x="5" y="10" width="14" height="10" rx="2"/>
+      <path d="M8 10V7a4 4 0 0 1 8 0v3"/>
+    </symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24">
+      <path d="M12 4 2.8 20h18.4L12 4Z"/>
+      <path d="M12 9v5M12 17h.01"/>
+    </symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24">
+      <path d="M10 5H6a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h4"/>
+      <path d="M14 8l4 4-4 4M18 12H9"/>
+    </symbol>
+    <symbol id="i-dots" viewBox="0 0 24 24">
+      <circle cx="5" cy="12" r="1" fill="currentColor" stroke="none"/>
+      <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/>
+      <circle cx="19" cy="12" r="1" fill="currentColor" stroke="none"/>
+    </symbol>
+    <symbol id="i-doc" viewBox="0 0 24 24">
+      <path d="M7 3h7l4 4v14H7V3Z"/>
+      <path d="M14 3v4h4M10 12h5M10 16h5"/>
+    </symbol>
+    <symbol id="i-check" viewBox="0 0 24 24">
+      <path d="m5 12 4.5 4.5L19 7"/>
+    </symbol>
+    <symbol id="i-spinner" viewBox="0 0 24 24">
+      <path d="M21 12a9 9 0 1 1-6.2-8.6"/>
+    </symbol>
+  </svg>
+
+  <header class="topbar" data-od-id="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none">
+          <rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M7.5 9.5h9M7.5 12h6.5M7.5 14.5h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <path class="brand-dot" d="M16.5 16.5h1.5" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <span class="brand-name" lang="en">OCG</span>
+        <span class="brand-div" aria-hidden="true"></span>
+        <span class="topbar-title">模型账本</span>
+        <nav class="page-switch" aria-label="页面">
+          <a href="./">配额</a>
+          <a href="models.html" aria-current="page">模型账本</a>
+        </nav>
+      </div>
+      <div class="topbar-right">
+        <span class="conn" id="connState"><span class="dot"></span><span id="connLabel">读取快照</span></span>
+        <span class="sync" id="lastSync">—</span>
+        <button class="icon-btn" id="refreshBtn" type="button" aria-label="重新拉取" title="重新拉取实时数据">
+          <svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg>
+        </button>
+        <details class="menu" id="menu">
+          <summary class="icon-btn" aria-label="更多操作" title="更多操作">
+            <svg class="icon" aria-hidden="true"><use href="#i-dots"/></svg>
+          </summary>
+          <div class="menu-pop">
+            <a href="https://modeldial.com/radar" target="_blank" rel="noreferrer">
+              <span>评分来源 ModelDial</span><svg class="icon icon--sm" aria-hidden="true"><use href="#i-external"/></svg>
+            </a>
+            <a href="https://opencode.ai/console/go" target="_blank" rel="noreferrer">
+              <span>额度来源 OpenCode Go</span><svg class="icon icon--sm" aria-hidden="true"><use href="#i-external"/></svg>
+            </a>
+            <div class="menu-sep"></div>
+            <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">
+              <span>数据许可 CC BY 4.0</span><svg class="icon icon--sm" aria-hidden="true"><use href="#i-external"/></svg>
+            </a>
+          </div>
+        </details>
+      </div>
+    </div>
+  </header>
+
+  <main class="ledger-wrap">
+    <div class="ledger-head" data-od-id="ledger-head">
+      <p class="eyebrow"><span class="dot" aria-hidden="true"></span>OPENCODE GO · $10 / 月</p>
+      <h1>模型账本</h1>
+      <p class="lede">每个模型每月能发多少次请求，乘以 ModelDial 五轴评分——按调用次数换算性价比。</p>
+    </div>
+
+    <div class="kpi-strip" role="group" aria-label="概览">
+      <div class="kpi">
+        <span class="kpi-k">在售模型</span>
+        <span class="kpi-v" id="kpi-models">—</span>
+        <span class="kpi-n">含免费与限时</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-k">付费且已评分</span>
+        <span class="kpi-v" id="kpi-matched">—</span>
+        <span class="kpi-n">对得上 ModelDial 榜单</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-k">最高分</span>
+        <span class="kpi-v" id="kpi-score">—</span>
+        <span class="kpi-n" id="kpi-score-note">五轴综合</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-k">每月最多次数</span>
+        <span class="kpi-v" id="kpi-req">—</span>
+        <span class="kpi-n" id="kpi-req-note">单模型用满额度</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-k">性价比最高</span>
+        <span class="kpi-v kpi-v--accent" id="kpi-best">—</span>
+        <span class="kpi-n" id="kpi-best-note">综合分与额度加权</span>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="tool-field">
+        <label class="tool-label" for="q">搜索</label>
+        <span class="search-wrap">
+          <svg class="icon icon--sm" aria-hidden="true"><use href="#i-doc"/></svg>
+          <input type="search" id="q" placeholder="模型名或标识" autocomplete="off">
+        </span>
+      </div>
+      <div class="tool-field">
+        <span class="tool-label" id="filter-label">筛选</span>
+        <div class="seg" role="group" aria-labelledby="filter-label">
+          <button type="button" data-filter="all" aria-pressed="true">全部</button>
+          <button type="button" data-filter="scored" aria-pressed="false">有评分</button>
+          <button type="button" data-filter="paid" aria-pressed="false">付费额度</button>
+        </div>
+      </div>
+      <div class="spacer"></div>
+      <button type="button" class="btn btn-ghost" id="refresh">
+        <svg class="icon icon--sm" aria-hidden="true"><use href="#i-refresh"/></svg>
+        <span>重新拉取</span>
+      </button>
+    </div>
+
+    <div class="frame">
+      <div class="table-scroll">
+        <table id="table">
+          <caption class="sr-only">OpenCode Go 模型额度与性价比</caption>
+          <thead>
+            <tr>
+              <th scope="col" class="sortable" data-key="name" aria-sort="none">模型</th>
+              <th scope="col" class="sortable hide-sm" data-key="monthlyUsd" aria-sort="none">月额度</th>
+              <th scope="col" class="sortable" data-key="monthlyRequests" aria-sort="none">月可调用</th>
+              <th scope="col" class="sortable hide-md" data-key="est5h" aria-sort="none">5 小时</th>
+              <th scope="col" class="sortable hide-md" data-key="perRequest" aria-sort="none">每次请求成本</th>
+              <th scope="col" class="sortable" data-key="overall" aria-sort="none">五轴综合</th>
+              <th scope="col" class="sortable hide-sm" data-key="backend" aria-sort="none">后端</th>
+              <th scope="col" class="sortable hide-sm" data-key="knowledge" aria-sort="none">知识</th>
+              <th scope="col" class="sortable" data-key="value" aria-sort="descending">性价比</th>
+              <th scope="col"><span class="sr-only">展开</span></th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="empty" hidden>没有符合条件的模型。</div>
+    </div>
+
+    <section class="method" aria-label="口径说明">
+      <div>
+        <h3>怎么算的</h3>
+        <p>Go 的额度按模型定价给到美元。文档写明 5 小时窗口是月额度的 20%，所以「月可调用次数」由每 5 小时的估算次数乘以 5 得到。</p>
+        <span class="formula">5 小时次数 × 5 = 月可调用次数
+每次请求成本 = $10 ÷ 月可调用次数
+性价比 = 五轴综合分 × log₁₀(1 + 月可调用次数)</span>
+      </div>
+      <div>
+        <h3>为什么用对数</h3>
+        <p>额度跨度从几十次到几万次，接近三个数量级。直接相乘会让便宜模型碾压一切，看不出质量差异；取对数后，额度翻十倍才相当于加一档，分数才有分量。</p>
+        <p>口径写在页面脚本里，改一处即可。</p>
+      </div>
+      <div>
+        <h3>数据从哪来</h3>
+        <p>模型清单与月度额度来自 opencode 的公开模型接口，允许跨域、无需密钥；五轴评分来自 ModelDial 的公开雷达快照。</p>
+        <p>带「同系列」标记的模型，榜单上是相近但不同版本，分数仅供参考。</p>
+      </div>
+    </section>
+
+    <footer class="dash-foot--ledger">
+      <span>评分：<a href="https://modeldial.com/radar" target="_blank" rel="noreferrer">ModelDial Radar</a> · CC BY 4.0 · 已二次加工</span>
+      <span class="foot-sep" aria-hidden="true">/</span>
+      <span>额度：<a href="https://opencode.ai/console/go" target="_blank" rel="noreferrer">OpenCode Go</a></span>
+      <span class="foot-sep" aria-hidden="true">/</span>
+      <span id="built">快照载入中</span>
+    </footer>
+  </main>
+
+  <noscript><p class="noscript">这个账本需要 JavaScript。评分与额度都已内嵌在页面里，不需要联网。</p></noscript>
+
+  <script id="ledger-data" type="application/json">{"schema":1,"builtAt":"2026-11-26T22:41:00.745Z","plan":{"name":"Go","priceUsd":10},"sources":{"api":{"url":"https://opencode.ai/inference/go/v1/models","cors":true},"goPage":{"url":"https://opencode.ai/console/go","cors":false},"latest":{"url":"https://modeldial.com/api/v1/radar/latest.json","cors":true},"overview":{"url":"https://modeldial.com/data/overview.json","cors":false},"license":{"name":"CC BY 4.0","url":"https://creativecommons.org/licenses/by/4.0/","attribution":"ModelDial Radar","attributionUrl":"https://modeldial.com/radar"}},"goModels":[{"slug":"kimi-k3","name":"Kimi K3","modelId":"k3","confidence":"exact","note":null,"apiOnly":false,"est5h":98,"reqPerUsd":32.666666666666664,"monthlyUsd":15,"monthlyUsdHtml":15,"monthlyRequests":489.99999999999994,"perDollarRequests":48.99999999999999,"monthlyUsdApi":15,"conflict":false,"limitedRegions":false,"limitedTime":false,"training":false,"free":false,"contextWindow":1048576,"maxOutput":1048576,"priceIn":3,"priceOut":15,"openWeights":true,"releaseDate":"2026-07-16","description":"Multimodal Kimi model with 1M context and always-on thinking for long-horizon agent work","unpublished":false},{"slug":"kimi-k3.1-pro","name":"Kimi K3.1 Pro","modelId":"k3.1-pro","confidence":"exact","note":null,"apiOnly":false,"est5h":147,"reqPerUsd":49,"monthlyUsd":15,"monthlyUsdHtml":15,"monthlyRequests":735,"perDollarRequests":73.5,"monthlyUsdApi":60,"conflict":true,"limitedRegions":false,"limitedTime":false,"training":false,"free":false,"contextWindow":1048576,"maxOutput":1048576,"priceIn":2,"priceOut":10,"openWeights":true,"releaseDate":"2026-10-23","description":"Multimodal Kimi model with a 1M-token context window and always-on reasoning, for coding, 3D creation and financial research","unpublished":false},{"slug":"qwen3.8-max","name":"Qwen3.8 Max","modelId":"qwen3.8-max","confidence":"exact","note":null,"apiOnly":false,"est5h":162,"reqPerUsd":54,"monthlyUsd":15,"monthlyUsdHtml":15,"monthlyRequests":810,"perDollarRequests":81,"monthlyUsdApi":15,"conflict":false,"limitedRegions":false,"limitedTime":false,"training":false,"free":false,"contextWindow":1000000,"maxOutput":131072,"priceIn":2,"priceOut":6,"openWeights":false,"releaseDate":"2026-08-03","description":"2.4-trillion-parameter multimodal flagship for coding, professional work, and long-horizon agentic workflows","unpublished":false},{"slug":"grok-4.7","name":"Grok 4.7","modelId":"grok-4.7","confidence":"exact","note":null,"apiOnly":false,"est5h":169,"reqPerUsd":56.333333333333336,"monthlyUsd":15,"monthlyUsdHtml":15,"monthlyRequests":845,"perDollarRequests":84.5,"monthlyUsdApi":15,"conflict":false,"limitedRegions":false,"limitedTime":false,"training":false,"free":false,"contextWindow":500000,"maxOutput":500000,"priceIn":2,"priceOut":6,"openWeights":false,"releaseDate":"2026-09-21","description":"xAI's frontier model for long-running agents, coding, knowledge work, and visual projects","unpublished":false},{"slug":"step-5-preview","name":"Step 5 Preview","modelId":"step-5-preview","confidence":"exact","note":null,"apiOnly":false,"est5h":426,"reqPerUsd":142,"monthlyUsd":15,"monthlyUsdHtml":15,"monthlyRequests":2130,"perDollarRequests":213,"monthlyUsdApi":15,"conflict":false,"limitedRegions":false,"limitedTime":false,"training":false,"free":false,"contextWindow":1000000,"maxOutput":65536,"priceIn":1,"priceOut":2.7,"openWeights":true,"releaseDate":"2026-09-16","description":"StepFun's next-generation flagship base model for coding and professional knowledge work, with native text, image, and video input and a 1M-token context window","unpublished":false},{"slug":"qwen4-max","name":"Qwen4 Max","modelId":"qwen4-max","confidence":"exact","note":null,"apiOnly":false,"est5h":463,"reqPerUsd":154.33333333333334,"monthlyUsd":15,"monthlyUsdHtml":15,"monthlyRequests":2315,"perDollarRequests":231.5,"monthlyUsdApi":15,"conflict":false,"limitedRegions":false,"limitedTime":false,"training":false,"free":false,"contextWindow":1000000,"maxOutput":262144,"priceIn":1.5,"priceOut":4.5,"openWeights":false,"releaseDate":"2026-11-16","description":"Flagship multimodal model for coding, office productivity, frontend design, and complex agentic tasks","unpublished":false},{"slug":"gemini-4-argon","name":"Gemini 4 Argon","modelId":"gemini-4-argon","confidence":"exact","note":null,"apiOnly":false,"est5h":566,"reqPerUsd":94.33333333333333,"monthlyUsd":30,"monthlyUsdHtml":30,"monthlyRequests":2830,"perDollarRequests":283,"monthlyUsdApi":30,"conflict":false,"limitedRegions":false,"limitedTime":false,"training":false,"free":false,"contextWindow":1048576,"maxOutput":65536,"priceIn":2,"priceOut":10,"openWeights":false,"releaseDate":"2026-10-13","description":"Google's flagship reasoning model for complex software engineering, deep math and science, and long-horizon autonomous agents","unpublished":false},{"slug":"glm-5.2","name":"GLM-5.2","modelId":null,"confidence":"none","note":"榜单未收录 GLM-5.2","apiOnly":false,"est5h":792,"reqPerUsd":66,"monthlyUsd":60,"monthlyUsdHtml":60,"monthlyRequests":3960,"perDollarRequests":396,"monthlyUsdApi":null,"conflict":false,"limitedRegions":false,"limitedTime":false,"training":null,"free":false,"contextWindow":null,"maxOutput":null,"priceIn":null,"priceOut":null,"openWeights":null,"releaseDate":null,"description":null,"unpublished":false},{"slug":"kimi-k2.7-code","name":"Kimi K2.7 Code","modelId":"kimi-for-coding","confidence":"family","note":"榜单为 Kimi K2.8 (Coding)，与 Go 的 K2.7 Code 版本不同","apiOnly":false,"est5h":994,"reqPerUsd":82.83333333333333,"monthlyUsd":60,"monthlyUsdHtml":60,"monthlyRequests":4970,"perDollarRequests":497,"monthlyUsdApi":60,"conflict":false,"limitedRegions":false,"limitedTime":false,"training":false,"free":false,"contextWindow":262144,"maxOutput":262144,"priceIn":0.95,"priceOut":4,"openWeights":true,"releaseDate":"2026-06-12","description":"Coding-focused Kimi model, stronger on long-horizon repo work with less overthinking","unpublished":false},{"slug":"deepseek-v4-pro","name":"DeepSeek V4 Pro","modelId":"deepseek-v4-pro","confidence":"exact","note":null,"apiOnly":false,"est5h":1040,"reqPerUsd":346.6666666666667,"monthlyUsd":15,"monthlyUsdHtml":15,"monthlyRequests":5200,"perDollarRequests":520,"monthlyUsdApi":15,"conflict":false,"limitedRegions":false,"limitedTime":false,"training":false,"free":false,"contextWindow":1000000,"maxOutput":384000,"priceIn":0.66,"priceOut":1.98,"openWeights":true,"releaseDate":"2026-04-24","description":"Flagship DeepSeek model for coding, reasoning, and agentic work","unpublished":false},{"slug":"hy4-preview","name":"Hy4 preview","modelId":"hy4-preview","confidence":"exact","note":null,"apiOnly":false,"est5h":1350,"reqPerUsd":225,"monthlyUsd":30,"monthlyUsdHtml":30,"monthlyRequests":6750,"perDollarRequests":675,"monthlyUsdApi":30,"conflict":false,"limitedRegions":false,"limitedTime":false,"training":false,"free":false,"contextWindow":1048576,"maxOutput":65536,"priceIn":0.834,"priceOut":2.501,"openWeights":true,"releaseDate":"2026-08-28","description":"A next-generation productivity model with significantly enhanced Agent and complex task execution capabilities.","unpublished":true},{"slug":"gpt-5.6-luna","name":"GPT-5.6 Luna","modelId":"gpt-5.6-luna","confidence":"exact","note":null,"apiOnly":false,"est5h":2050,"reqPerUsd":683.3333333333334,"monthlyUsd":15,"monthlyUsdHtml":15,"monthlyRequests":10250,"perDollarRequests":1025,"monthlyUsdApi":15,"conflict":false,"limitedRegions":false,"limitedTime":false,"training":false,"free":false,"contextWindow":1050000,"maxOutput":128000,"priceIn":0.2,"priceOut":1.2,"openWeights":false,"releaseDate":"2026-07-09","description":"Cost-efficient GPT-5.6 model for fast, high-volume workloads","unpublished":false},{"slug":"glm-5.3","name":"GLM-5.3","modelId":"glm-5.3","confidence":"exact","note":null,"apiOnly":false,"est5h":2640,"reqPerUsd":66,"monthlyUsd":200,"monthlyUsdHtml":200,"monthlyRequests":13200,"perDollarRequests":1320,"monthlyUsdApi":200,"conflict":false,"limitedRegions":false,"limitedTime":false,"training":false,"free":false,"contextWindow":1000000,"maxOutput":131072,"priceIn":1.4,"priceOut":4.4,"openWeights":true,"releaseDate":"2026-08-14","description":"Flagship GLM model for long-horizon coding, agents, and complex project delivery","unpublished":false},{"slug":"hy4","name":"Hy4","modelId":"hy4-dev","confidence":"exact","note":"榜单显示名为 HY4","apiOnly":false,"est5h":2710,"reqPerUsd":225.83333333333334,"monthlyUsd":60,"monthlyUsdHtml":60,"monthlyRequests":13550,"perDollarRequests":1355,"monthlyUsdApi":60,"conflict":false,"limitedRegions":false,"limitedTime":false,"training":false,"free":false,"contextWindow":1048576,"maxOutput":65536,"priceIn":0.834,"priceOut":2.501,"openWeights":true,"releaseDate":"2026-11-04","description":"A next-generation multimodal productivity model with significantly enhanced Agent and complex task execution capabilities.","unpublished":false},{"slug":"minimax-m3","name":"MiniMax-M3","modelId":"MiniMax-M3","confidence":"exact","note":null,"apiOnly":false,"est5h":3210,"reqPerUsd":267.5,"monthlyUsd":60,"monthlyUsdHtml":60,"monthlyRequests":16050,"perDollarRequests":1605,"monthlyUsdApi":60,"conflict":false,"limitedRegions":false,"limitedTime":false,"training":false,"free":false,"contextWindow":1000000,"maxOutput":131072,"priceIn":0.3,"priceOut":1.2,"openWeights":true,"releaseDate":"2026-06-01","description":"MiniMax multimodal coding model for long-context reasoning and agent tasks","unpublished":false},{"slug":"mimo-v2.6-pro","name":"MiMo-V2.6-Pro","modelId":"mimo-v2.6-pro","confidence":"exact","note":null,"apiOnly":false,"est5h":3260,"reqPerUsd":1086.6666666666667,"monthlyUsd":15,"monthlyUsdHtml":15,"monthlyRequests":16300.000000000002,"perDollarRequests":1630.0000000000002,"monthlyUsdApi":15,"conflict":false,"limitedRegions":false,"limitedTime":false,"training":false,"free":false,"contextWindow":1048576,"maxOutput":131072,"priceIn":0.435,"priceOut":0.87,"openWeights":true,"releaseDate":"2026-09-22","description":"Stronger MiMo Pro tier for multimodal reasoning and coding-agent execution","unpublished":false},{"slug":"claude-haiku-5-5","name":"Claude Haiku 5.5","modelId":"anthropic/haiku-5.5","confidence":"exact","note":null,"apiOnly":false,"est5h":3850,"reqPerUsd":1283.3333333333333,"monthlyUsd":15,"monthlyUsdHtml":15,"monthlyRequests":19250,"perDollarRequests":1925,"monthlyUsdApi":15,"conflict":false,"limitedRegions":false,"limitedTime":false,"training":false,"free":false,"contextWindow":1000000,"maxOutput":128000,"priceIn":0.1,"priceOut":0.5,"openWeights":false,"releaseDate":"2026-10-07","description":"Fast Claude model for responsive assistance, classification, and lightweight agents","unpublished":false},{"slug":"minimax-m3.1-flash","name":"MiniMax M3.1 Flash","modelId":"MiniMax-M3.1-Flash","confidence":"exact","note":null,"apiOnly":false,"est5h":3880,"reqPerUsd":970,"monthlyUsd":20,"monthlyUsdHtml":20,"monthlyRequests":19400,"perDollarRequests":1940,"monthlyUsdApi":20,"conflict":false,"limitedRegions":false,"limitedTime":false,"training":false,"free":false,"contextWindow":1000000,"maxOutput":512000,"priceIn":0.15,"priceOut":0.6,"openWeights":true,"releaseDate":"2026-10-19","description":"Frontier multimodal coding model with 1M context window and tunable thinking depth","unpublished":false},{"slug":"gpt-6-luna","name":"GPT-6 Luna","modelId":"gpt-6-luna","confidence":"exact","note":null,"apiOnly":false,"est5h":4230,"reqPerUsd":1410,"monthlyUsd":15,"monthlyUsdHtml":15,"monthlyRequests":21150,"perDollarRequests":2115,"monthlyUsdApi":15,"conflict":false,"limitedRegions":false,"limitedTime":false,"training":false,"free":false,"contextWindow":1050000,"maxOutput":128000,"priceIn":0.1,"priceOut":0.5,"openWeights":false,"releaseDate":"2026-09-22","description":"OpenAI's most efficient model for focused, high-volume tasks","unpublished":false},{"slug":"hy3","name":"Hy3","modelId":null,"confidence":"none","note":"榜单未收录 Hy3","apiOnly":false,"est5h":4300,"reqPerUsd":358.3333333333333,"monthlyUsd":60,"monthlyUsdHtml":60,"monthlyRequests":21500,"perDollarRequests":2150,"monthlyUsdApi":60,"conflict":false,"limitedRegions":false,"limitedTime":false,"training":false,"free":false,"contextWindow":256000,"maxOutput":128000,"priceIn":0.14,"priceOut":0.58,"openWeights":true,"releaseDate":"2026-07-06","description":"Tencent Hy reasoning model for coding, instruction following, and agent tasks","unpublished":false},{"slug":"qwen3.7-plus","name":"Qwen3.7 Plus","modelId":null,"confidence":"none","note":"榜单未收录 Qwen3.7 Plus","apiOnly":false,"est5h":4310,"reqPerUsd":359.1666666666667,"monthlyUsd":60,"monthlyUsdHtml":60,"monthlyRequests":21550,"perDollarRequests":2155,"monthlyUsdApi":60,"conflict":false,"limitedRegions":false,"limitedTime":false,"training":false,"free":false,"contextWindow":1000000,"maxOutput":65536,"priceIn":0.4,"priceOut":1.6,"openWeights":false,"releaseDate":"2026-06-02","description":"Multimodal reasoning model for visual analysis, planning, and tool use","unpublished":false},{"slug":"qwen3.8-flash","name":"Qwen3.8 Flash","modelId":"qwen3.8-flash","confidence":"exact","note":null,"apiOnly":false,"est5h":5400,"reqPerUsd":900,"monthlyUsd":30,"monthlyUsdHtml":30,"monthlyRequests":27000,"perDollarRequests":2700,"monthlyUsdApi":30,"conflict":false,"limitedRegions":false,"limitedTime":false,"training":false,"free":false,"contextWindow":1000000,"maxOutput":131072,"priceIn":0.15,"priceOut":0.47,"openWeights":false,"releaseDate":"2026-08-26","description":"Qwen vision-language model for visual reasoning, documents, and agent tasks","unpublished":false},{"slug":"glm-5.3-flash","name":"GLM-5.3-Flash","modelId":"glm-5.3-flash","confidence":"exact","note":null,"apiOnly":false,"est5h":6320,"reqPerUsd":526.6666666666666,"monthlyUsd":60,"monthlyUsdHtml":60,"monthlyRequests":31599.999999999996,"perDollarRequests":3159.9999999999995,"monthlyUsdApi":60,"conflict":false,"limitedRegions":false,"limitedTime":false,"training":false,"free":false,"contextWindow":1000000,"maxOutput":131072,"priceIn":0.15,"priceOut":0.5,"openWeights":true,"releaseDate":"2026-08-26","description":"Native multimodal GLM model for efficient coding and long-horizon agent tasks","unpublished":false},{"slug":"longcat-2.5","name":"LongCat 2.5","modelId":"LongCat-2.5","confidence":"exact","note":null,"apiOnly":false,"est5h":11400,"reqPerUsd":950,"monthlyUsd":60,"monthlyUsdHtml":60,"monthlyRequests":57000,"perDollarRequests":5700,"monthlyUsdApi":60,"conflict":false,"limitedRegions":false,"limitedTime":false,"training":false,"free":false,"contextWindow":1000000,"maxOutput":262144,"priceIn":0.3,"priceOut":1.2,"openWeights":true,"releaseDate":"2026-11-02","description":"Meituan's multimodal reasoning model for long-horizon coding and agent tasks, with visual understanding and a 1M-token context window","unpublished":false},{"slug":"mimo-v2.6-flash","name":"MiMo-V2.6-Flash","modelId":"mimo-v2.6-flash","confidence":"exact","note":null,"apiOnly":false,"est5h":30100,"reqPerUsd":2508.3333333333335,"monthlyUsd":60,"monthlyUsdHtml":60,"monthlyRequests":150500,"perDollarRequests":15050,"monthlyUsdApi":60,"conflict":false,"limitedRegions":false,"limitedTime":false,"training":false,"free":false,"contextWindow":1048576,"maxOutput":131072,"priceIn":0.14,"priceOut":0.28,"openWeights":true,"releaseDate":"2026-09-22","description":"MiMo Flash model for multimodal coding agents and long-context automation","unpublished":false},{"slug":"deepseek-v4.1-flash","name":"DeepSeek V4.1 Flash 1017","modelId":"deepseek-flash","confidence":"exact","note":"榜单显示名为 DeepSeek V4.1 Flash (1017)","apiOnly":false,"est5h":43300,"reqPerUsd":2165,"monthlyUsd":100,"monthlyUsdHtml":100,"monthlyRequests":216500,"perDollarRequests":21650,"monthlyUsdApi":100,"conflict":false,"limitedRegions":false,"limitedTime":false,"training":false,"free":false,"contextWindow":1000000,"maxOutput":384000,"priceIn":0.15,"priceOut":0.6,"openWeights":true,"releaseDate":"2026-10-17","description":"October 17 update of DeepSeek V4.1 Flash with improved reasoning, coding, agentic tasks, and visual understanding","unpublished":false},{"slug":"muse-spark-1.2-contributor","name":"Muse Spark 1.2 Contributor","modelId":null,"confidence":"none","note":"榜单只有 Muse Spark 1.3","apiOnly":false,"est5h":45300,"reqPerUsd":3775,"monthlyUsd":60,"monthlyUsdHtml":60,"monthlyRequests":226500,"perDollarRequests":22650,"monthlyUsdApi":60,"conflict":false,"limitedRegions":true,"limitedTime":false,"training":true,"free":false,"contextWindow":1048576,"maxOutput":131072,"priceIn":0.1,"priceOut":0.2,"openWeights":false,"releaseDate":"2026-08-05","description":"Muse Spark 1.2 is a coding-focused update to Muse Spark 1.1 with improvements in code generation, complex debugging, codebase understanding, and end-to-end developer workflows.","unpublished":false},{"slug":"muse-spark-1.3-contributor","name":"Muse Spark 1.3 Contributor","modelId":"muse-spark-1.3-contributor","confidence":"exact","note":null,"apiOnly":false,"est5h":45300,"reqPerUsd":3775,"monthlyUsd":60,"monthlyUsdHtml":60,"monthlyRequests":226500,"perDollarRequests":22650,"monthlyUsdApi":60,"conflict":false,"limitedRegions":true,"limitedTime":false,"training":true,"free":false,"contextWindow":1048576,"maxOutput":131072,"priceIn":0.1,"priceOut":0.2,"openWeights":false,"releaseDate":"2026-09-02","description":"Muse Spark 1.3 is a multimodal reasoning model from Meta for coding and agentic workflows.","unpublished":false},{"slug":"beam-free","name":"Beam Free","modelId":null,"confidence":"none","note":"限时免费模型，榜单未收录","apiOnly":false,"est5h":null,"reqPerUsd":null,"monthlyUsd":null,"monthlyUsdHtml":null,"monthlyRequests":null,"perDollarRequests":null,"monthlyUsdApi":null,"conflict":false,"limitedRegions":true,"limitedTime":true,"training":false,"free":true,"contextWindow":1048576,"maxOutput":131072,"priceIn":0,"priceOut":0,"openWeights":true,"releaseDate":"2026-10-05","description":"Sparse mixture-of-experts reasoning model with 23B active parameters for coding and agentic workflows","unpublished":false},{"slug":"hungerg-free","name":"HungerG Free","modelId":"qoder/hmodel","confidence":"family","note":"榜单为付费版 HungerG，免费版未独立评测","apiOnly":false,"est5h":null,"reqPerUsd":null,"monthlyUsd":null,"monthlyUsdHtml":null,"monthlyRequests":null,"perDollarRequests":null,"monthlyUsdApi":null,"conflict":false,"limitedRegions":false,"limitedTime":true,"training":false,"free":true,"contextWindow":1000000,"maxOutput":65536,"priceIn":0,"priceOut":0,"openWeights":false,"releaseDate":"2026-11-24","description":"Stealth reasoning model, free for a limited time","unpublished":false},{"slug":"hy4-flash-free","name":"Hy4 flash Free","modelId":"hy4-flash-dev","confidence":"family","note":"榜单为 HY4-flash，免费版未独立评测","apiOnly":false,"est5h":null,"reqPerUsd":null,"monthlyUsd":null,"monthlyUsdHtml":null,"monthlyRequests":null,"perDollarRequests":null,"monthlyUsdApi":null,"conflict":false,"limitedRegions":false,"limitedTime":true,"training":false,"free":true,"contextWindow":1048576,"maxOutput":65536,"priceIn":0,"priceOut":0,"openWeights":true,"releaseDate":"2026-11-16","description":"Tencent's lower-cost Hy4 tier for everyday agent and productivity tasks, with image understanding and a 1M-token context window.","unpublished":false},{"slug":"iceman-contributor-free","name":"Iceman Contributor Free","modelId":null,"confidence":"none","note":"限时免费模型，榜单未收录","apiOnly":false,"est5h":null,"reqPerUsd":null,"monthlyUsd":null,"monthlyUsdHtml":null,"monthlyRequests":null,"perDollarRequests":null,"monthlyUsdApi":null,"conflict":false,"limitedRegions":false,"limitedTime":true,"training":true,"free":true,"contextWindow":262144,"maxOutput":131072,"priceIn":0,"priceOut":0,"openWeights":false,"releaseDate":"2026-10-24","description":"Stealth model, free for a limited time","unpublished":false}],"fiveAxis":{"batchId":"overall-5002e0b328995121fadd6116","publishedAt":"2026-11-26T02:41:14.286Z","scoringRelease":"modeldial-scoring-20261119-v9","weights":{"backend":30,"frontend":15,"knowledge":25,"aesthetic":15,"maintainability":15},"names":{"anthropic/claude-fable-5.2":"Claude Fable 5.2","anthropic/claude-sonnet-5.5":"Claude Sonnet 5.5","anthropic/haiku-5.5":"Claude Haiku 5.5","baidu/ernie-5.5-flash-preview:free":"ERNIE 5.5 Flash Preview","claude-fable-5-1":"Claude Fable 5.1","claude-opus-4-8":"Claude Opus 4.8","claude-opus-5":"Claude Opus 5","claude-opus-5-5":"Claude Opus 5.5","deepseek-flash":"DeepSeek V4.1 Flash (1017)","deepseek-v4-flash":"DeepSeek V4 Flash","deepseek-v4-flash-vision-exp":"DeepSeek V4 Flash Vision Exp","deepseek-v4-pro":"DeepSeek V4 Pro","deepseek-v4.1-flash-expires-on-0910":"DeepSeek V4.1 Flash (0910)","devin/swe-2-1":"SWE-2.1","doubao-seed-2-1-pro-260915":"Doubao Seed 2.1 Pro (260915)","egg-alpha":"Egg Alpha","gemini-3.7-flash-high":"Gemini 3.7 Flash","gemini-3.8-flash-high":"Gemini 3.8 Flash","gemini-4-argon":"Gemini 4 Argon","gemini-4-carbon":"Gemini 4 Carbon","glm-5.3":"GLM-5.3","glm-5.3-flash":"GLM-5.3-Flash","glm-5.4":"GLM-5.4","google/gemini-4-hydrogen":"Gemini 4 Hydrogen","google/gemini-4-neon":"Gemini 4 Neon","gpt-5.6-luna":"GPT-5.6 Luna","gpt-5.6-sol":"GPT-5.6 Sol","gpt-5.6-terra":"GPT-5.6 Terra","gpt-6-astra":"GPT-6 Astra","gpt-6-luna":"GPT-6 Luna","gpt-6-sol":"GPT-6 Sol","gpt-6.1-sol":"GPT-6.1 Sol","gpt-6.1-terra":"GPT-6.1 Terra","gpt-6.2-astra":"GPT-6.2 Astra","gpt-6.2-sol":"GPT-6.2 Sol","grok-4.6":"Grok 4.6","grok-4.7":"Grok 4.7","hy4-dev":"HY4","hy4-flash-dev":"HY4-flash","hy4-preview":"HY4 Preview","k3":"Kimi K3","k3.1-pro":"Kimi K3.1 Pro","kimi-for-coding":"Kimi K2.8 (Coding)","Ling-3.2-flash":"Ling-3.2-Flash","meta/muse-wonder":"Muse Wonder","mimo-v2.6-flash":"MiMo-V2.6-Flash","mimo-v2.6-pro":"MiMo-V2.6-Pro","MiniMax-M3":"MiniMax M3","MiniMax-M3.1-Flash":"MiniMax M3.1 Flash","MiniMax-M3.1-Flash-Preview":"MiniMax M3.1 Flash Preview","muse-spark-1.3-contributor":"Muse Spark 1.3","nvidia/nemotron-3-ultra-550b-a55b:free":"NVIDIA Nemotron 3 Ultra (550B-A55B)","qoder/hmodel":"HungerG","qoder/lmodel":"QoDuck","qwen/qwen3.8-27b":"Qwen3.8-27B","qwen3.8-flash":"Qwen3.8-Flash","qwen3.8-max":"Qwen3.8-Max","qwen4-max":"Qwen-4-Max","qwen4-max-preview":"Qwen4-Max-Preview","space-bunny-free":"Space Bunny","stealth/crouton-alpha":"Crouton Alpha","step-5-preview":"Step-5 Preview"},"hiddenModelIds":["MiniMax-M3.1-Flash-Preview","deepseek-v4-flash-vision-exp","hy4-preview","longcat-2.5-preview-free","openrouter-opus55:nvidia/nemotron-3-ultra-550b-a55b:free:default","qoder/lmodel","qwen4-max-preview","space-bunny-free","union-alpha"],"byModel":{"gpt-6-astra":[{"cid":"cloudflare-reference:gpt-6-astra:xhigh","conn":"cloudflare-reference","effort":"xhigh","backend":60.4185,"frontend":80.12702944851245,"knowledge":95,"aesthetic":29,"maintain":57,"overall":66.79},{"cid":"cloudflare-reference:gpt-6-astra:max","conn":"cloudflare-reference","effort":"max","backend":60.2385,"frontend":83.39906434942932,"knowledge":95,"aesthetic":24,"maintain":55,"overall":66.18},{"cid":"cloudflare-reference:gpt-6-astra:high","conn":"cloudflare-reference","effort":"high","backend":59.4285,"frontend":80.12702944851245,"knowledge":85,"aesthetic":26,"maintain":59,"overall":63.85},{"cid":"cloudflare-reference:gpt-6-astra:low","conn":"cloudflare-reference","effort":"low","backend":56.265,"frontend":78.88910058131339,"knowledge":85,"aesthetic":21,"maintain":70,"overall":63.61},{"cid":"cloudflare-reference:gpt-6-astra:medium","conn":"cloudflare-reference","effort":"medium","backend":58.79,"frontend":62.594964492534444,"knowledge":85,"aesthetic":25,"maintain":70,"overall":62.53}],"gpt-6.1-sol":[{"cid":"codex-local:gpt-6.1-sol:max","conn":"codex-local","effort":"max","backend":59.4365,"frontend":83.46626469356836,"knowledge":85,"aesthetic":34,"maintain":47,"overall":63.75},{"cid":"codex-local:gpt-6.1-sol:high","conn":"codex-local","effort":"high","backend":57.4775,"frontend":77.47243391464671,"knowledge":80,"aesthetic":27,"maintain":45,"overall":59.66},{"cid":"codex-local:gpt-6.1-sol:xhigh","conn":"codex-local","effort":"xhigh","backend":56.8285,"frontend":62.594964492534444,"knowledge":85,"aesthetic":26,"maintain":47,"overall":58.64},{"cid":"codex-local:gpt-6.1-sol:medium","conn":"codex-local","effort":"medium","backend":39.9415,"frontend":60.82413115920111,"knowledge":85,"aesthetic":19,"maintain":44,"overall":51.81},{"cid":"codex-local:gpt-6.1-sol:low","conn":"codex-local","effort":"low","backend":37.3575,"frontend":59.166393063963014,"knowledge":90,"aesthetic":20,"maintain":37,"overall":51.13}],"claude-opus-5-5":[{"cid":"Claude:claude-opus-5-5:max","conn":"Claude","effort":"max","backend":49.514,"frontend":86.82476220882502,"knowledge":100,"aesthetic":44,"maintain":72,"overall":70.28},{"cid":"Claude:claude-opus-5-5:xhigh","conn":"Claude","effort":"xhigh","backend":48.12,"frontend":85.85402759234535,"knowledge":95,"aesthetic":42,"maintain":55,"overall":65.61}],"claude-fable-5-1":[{"cid":"Claude:claude-fable-5-1:max","conn":"Claude","effort":"max","backend":47,"frontend":73,"knowledge":95,"aesthetic":37,"maintain":52,"overall":62.15},{"cid":"Claude:claude-fable-5-1:xhigh","conn":"Claude","effort":"xhigh","backend":45.25,"frontend":73,"knowledge":95,"aesthetic":37,"maintain":52,"overall":61.63},{"cid":"Claude:claude-fable-5-1:high","conn":"Claude","effort":"high","backend":39.5,"frontend":68,"knowledge":90,"aesthetic":37,"maintain":52,"overall":57.9}],"anthropic/claude-sonnet-5.5":[{"cid":"openrouter-opus55:anthropic/claude-sonnet-5.5:xhigh","conn":"openrouter-opus55","effort":"xhigh","backend":52.014,"frontend":70.16219052428261,"knowledge":85,"aesthetic":36,"maintain":56,"overall":61.18}],"union-alpha":[{"cid":"opencode:union-alpha:default","conn":"opencode","effort":"default","backend":91,"frontend":62.594964492534444,"knowledge":80,"aesthetic":null,"maintain":null,"overall":null}],"meta/muse-wonder":[{"cid":"openrouter:meta/muse-wonder:max","conn":"openrouter","effort":"max","backend":44.302,"frontend":57.43306807508896,"knowledge":90,"aesthetic":22,"maintain":39,"overall":53.56},{"cid":"openrouter:meta/muse-wonder:high","conn":"openrouter","effort":"high","backend":41.052,"frontend":57.652589680027226,"knowledge":80,"aesthetic":22,"maintain":49,"overall":51.61},{"cid":"openrouter:meta/muse-wonder:xhigh","conn":"openrouter","effort":"xhigh","backend":40.302,"frontend":54.50752795163217,"knowledge":80,"aesthetic":22,"maintain":47,"overall":50.62},{"cid":"openrouter:meta/muse-wonder:default","conn":"openrouter","effort":"default","backend":36.75,"frontend":42.933668180450965,"knowledge":60,"aesthetic":16,"maintain":42,"overall":41.17}],"grok-4.7":[{"cid":"grok-api:grok-4.7:high","conn":"grok-api","effort":"high","backend":48.385,"frontend":58.6332197176082,"knowledge":85,"aesthetic":22,"maintain":50,"overall":55.36},{"cid":"grok-api:grok-4.7:xhigh","conn":"grok-api","effort":"xhigh","backend":47.135,"frontend":42.52578040404962,"knowledge":80,"aesthetic":25,"maintain":57,"overall":52.82}],"gpt-6-sol":[{"cid":"cloudflare-reference:gpt-6-sol:max","conn":"cloudflare-reference","effort":"max","backend":46.6835,"frontend":76.60640185367419,"knowledge":70,"aesthetic":25,"maintain":68,"overall":56.95},{"cid":"cloudflare-reference:gpt-6-sol:xhigh","conn":"cloudflare-reference","effort":"xhigh","backend":45.33,"frontend":71.190428056748,"knowledge":75,"aesthetic":30,"maintain":61,"overall":56.68},{"cid":"cloudflare-reference:gpt-6-sol:high","conn":"cloudflare-reference","effort":"high","backend":42.6065,"frontend":55.667164668901286,"knowledge":70,"aesthetic":22,"maintain":70,"overall":52.43},{"cid":"cloudflare-reference:gpt-6-sol:medium","conn":"cloudflare-reference","effort":"medium","backend":37.356,"frontend":55.530606341866765,"knowledge":65,"aesthetic":26,"maintain":69,"overall":50.04},{"cid":"cloudflare-reference:gpt-6-sol:low","conn":"cloudflare-reference","effort":"low","backend":31.0845,"frontend":54.35170113492418,"knowledge":70,"aesthetic":14,"maintain":57,"overall":45.63}],"claude-opus-5":[{"cid":"Claude:claude-opus-5:max","conn":"Claude","effort":"max","backend":36,"frontend":65.70130617054112,"knowledge":95,"aesthetic":42,"maintain":43,"overall":57.16},{"cid":"Claude:claude-opus-5:high","conn":"Claude","effort":"high","backend":36.75,"frontend":54.26873785702042,"knowledge":90,"aesthetic":44,"maintain":52,"overall":56.07},{"cid":"Claude:claude-opus-5:xhigh","conn":"Claude","effort":"xhigh","backend":38.75,"frontend":56.3278364964762,"knowledge":85,"aesthetic":34,"maintain":55,"overall":54.67}],"grok-4.6":[{"cid":"grok-api:grok-4.6:xhigh","conn":"grok-api","effort":"xhigh","backend":43.187,"frontend":59.035092997207336,"knowledge":85,"aesthetic":21,"maintain":52,"overall":54.01},{"cid":"grok-api:grok-4.6:high","conn":"grok-api","effort":"high","backend":38.3915,"frontend":50.703608101414474,"knowledge":80,"aesthetic":22,"maintain":46,"overall":49.32}],"muse-spark-1.3-contributor":[{"cid":"opencode:muse-spark-1.3-contributor:default","conn":"opencode","effort":"default","backend":37.5,"frontend":67.76365068692157,"knowledge":75,"aesthetic":24,"maintain":36,"overall":49.16}],"gpt-5.6-sol":[{"cid":"cloudflare-reference:gpt-5.6-sol:max","conn":"cloudflare-reference","effort":"max","backend":53.034,"frontend":57.08383133556795,"knowledge":75,"aesthetic":22,"maintain":57,"overall":55.07},{"cid":"cloudflare-reference:gpt-5.6-sol:high","conn":"cloudflare-reference","effort":"high","backend":44.74,"frontend":69.462236679553,"knowledge":65,"aesthetic":18,"maintain":55,"overall":51.04},{"cid":"cloudflare-reference:gpt-5.6-sol:xhigh","conn":"cloudflare-reference","effort":"xhigh","backend":49.288,"frontend":42.11931317168735,"knowledge":65,"aesthetic":21,"maintain":53,"overall":48.45},{"cid":"cloudflare-reference:gpt-5.6-sol:medium","conn":"cloudflare-reference","effort":"medium","backend":44.1625,"frontend":41.175624180573415,"knowledge":70,"aesthetic":23,"maintain":47,"overall":47.43},{"cid":"cloudflare-reference:gpt-5.6-sol:low","conn":"cloudflare-reference","effort":"low","backend":40.404,"frontend":57.978999326377355,"knowledge":60,"aesthetic":16,"maintain":51,"overall":45.87}],"claude-opus-4-8":[{"cid":"Claude:claude-opus-4-8:xhigh","conn":"Claude","effort":"xhigh","backend":30.75,"frontend":67.91505661124415,"knowledge":90,"aesthetic":31,"maintain":47,"overall":53.61},{"cid":"Claude:claude-opus-4-8:max","conn":"Claude","effort":"max","backend":33,"frontend":55,"knowledge":85,"aesthetic":30,"maintain":47,"overall":50.95},{"cid":"Claude:claude-opus-4-8:high","conn":"Claude","effort":"high","backend":22,"frontend":36.96210682013794,"knowledge":75,"aesthetic":27,"maintain":46,"overall":41.84}],"k3":[{"cid":"kimi:k3:high","conn":"kimi","effort":"high","backend":35.052,"frontend":52.54034279529203,"knowledge":70,"aesthetic":23,"maintain":46,"overall":46.25}],"mimo-v2.6-pro":[{"cid":"xiaomi:mimo-v2.6-pro:default","conn":"xiaomi","effort":"default","backend":37.25,"frontend":69.97219946838702,"knowledge":65,"aesthetic":23,"maintain":49,"overall":48.72}],"glm-5.3":[{"cid":"glm:glm-5.3:max","conn":"glm","effort":"max","backend":36.75,"frontend":54.62290452368709,"knowledge":70,"aesthetic":23,"maintain":47,"overall":47.22},{"cid":"glm:glm-5.3:high","conn":"glm","effort":"high","backend":37.5,"frontend":71.04347668360616,"knowledge":50,"aesthetic":14,"maintain":53,"overall":44.46}],"gpt-5.6-terra":[{"cid":"cloudflare-reference:gpt-5.6-terra:max","conn":"cloudflare-reference","effort":"max","backend":45.822,"frontend":53.09260022907205,"knowledge":55,"aesthetic":21,"maintain":55,"overall":46.86},{"cid":"cloudflare-reference:gpt-5.6-terra:high","conn":"cloudflare-reference","effort":"high","backend":35.7995,"frontend":35.82661411413455,"knowledge":45,"aesthetic":13,"maintain":57,"overall":37.86},{"cid":"cloudflare-reference:gpt-5.6-terra:xhigh","conn":"cloudflare-reference","effort":"xhigh","backend":35.1985,"frontend":39.44736871145573,"knowledge":35,"aesthetic":14,"maintain":49,"overall":34.68},{"cid":"cloudflare-reference:gpt-5.6-terra:medium","conn":"cloudflare-reference","effort":"medium","backend":24.9625,"frontend":11.585246319833498,"knowledge":50,"aesthetic":19,"maintain":45,"overall":31.33},{"cid":"cloudflare-reference:gpt-5.6-terra:low","conn":"cloudflare-reference","effort":"low","backend":29.085,"frontend":0,"knowledge":30,"aesthetic":13,"maintain":38,"overall":23.88}],"hy4-preview":[{"cid":"hy:hy4-preview:high","conn":"hy","effort":"high","backend":69,"frontend":53.416741544476714,"knowledge":65,"aesthetic":59,"maintain":57,"overall":61.5}],"space-bunny-free":[{"cid":"opencode:space-bunny-free:default","conn":"opencode","effort":"default","backend":57,"frontend":24.1339406213371,"knowledge":75,"aesthetic":59,"maintain":55,"overall":55.08}],"deepseek-v4.1-flash-expires-on-0910":[{"cid":"deepseek:deepseek-v4.1-flash-expires-on-0910:max","conn":"deepseek","effort":"max","backend":31,"frontend":57.689594667758186,"knowledge":65,"aesthetic":23,"maintain":50,"overall":45.15},{"cid":"deepseek:deepseek-v4.1-flash-expires-on-0910:high","conn":"deepseek","effort":"high","backend":28,"frontend":16.717857419278154,"knowledge":50,"aesthetic":19,"maintain":41,"overall":32.41}],"MiniMax-M3.1-Flash-Preview":[{"cid":"minimax:MiniMax-M3.1-Flash-Preview:max","conn":"minimax","effort":"max","backend":71,"frontend":21.377541306408418,"knowledge":75,"aesthetic":70,"maintain":53,"overall":58.09},{"cid":"minimax:MiniMax-M3.1-Flash-Preview:high","conn":"minimax","effort":"high","backend":63,"frontend":0,"knowledge":75,"aesthetic":null,"maintain":null,"overall":null},{"cid":"minimax:MiniMax-M3.1-Flash-Preview:low","conn":"minimax","effort":"low","backend":30,"frontend":0,"knowledge":null,"aesthetic":null,"maintain":null,"overall":null},{"cid":"minimax:MiniMax-M3.1-Flash-Preview:medium","conn":"minimax","effort":"medium","backend":34,"frontend":0,"knowledge":null,"aesthetic":null,"maintain":null,"overall":null},{"cid":"minimax:MiniMax-M3.1-Flash-Preview:xhigh","conn":"minimax","effort":"xhigh","backend":47,"frontend":0,"knowledge":null,"aesthetic":null,"maintain":null,"overall":null}],"anthropic/haiku-5.5":[{"cid":"openrouter-opus55:anthropic/haiku-5.5:xhigh","conn":"openrouter-opus55","effort":"xhigh","backend":35.25,"frontend":57.006699030925176,"knowledge":60,"aesthetic":29,"maintain":43,"overall":44.93}],"qwen3.8-flash":[{"cid":"qwen:qwen3.8-flash:default","conn":"qwen","effort":"default","backend":33.552,"frontend":46.05689997253846,"knowledge":50,"aesthetic":13,"maintain":43,"overall":37.87}],"step-5-preview":[{"cid":"stepfun:step-5-preview:default","conn":"stepfun","effort":"default","backend":31.75,"frontend":37.51834797931913,"knowledge":75,"aesthetic":16,"maintain":45,"overall":43.05}],"deepseek-v4-pro":[{"cid":"deepseek:deepseek-v4-pro:max","conn":"deepseek","effort":"max","backend":37.606,"frontend":41.24193056781883,"knowledge":65,"aesthetic":20,"maintain":53,"overall":44.67},{"cid":"deepseek:deepseek-v4-pro:high","conn":"deepseek","effort":"high","backend":33.342,"frontend":18.541486602692608,"knowledge":75,"aesthetic":31,"maintain":47,"overall":43.23}],"kimi-for-coding":[{"cid":"kimi:kimi-for-coding:max","conn":"kimi","effort":"max","backend":28.25,"frontend":46,"knowledge":70,"aesthetic":16,"maintain":50,"overall":42.78},{"cid":"kimi:kimi-for-coding:high","conn":"kimi","effort":"high","backend":28.25,"frontend":42.27265941840749,"knowledge":70,"aesthetic":16,"maintain":50,"overall":42.22}],"gpt-6-luna":[{"cid":"cloudflare-reference:gpt-6-luna:xhigh","conn":"cloudflare-reference","effort":"xhigh","backend":35.7205,"frontend":56.808603208890545,"knowledge":50,"aesthetic":21,"maintain":49,"overall":42.24},{"cid":"cloudflare-reference:gpt-6-luna:max","conn":"cloudflare-reference","effort":"max","backend":37.1205,"frontend":51.24917420601485,"knowledge":30,"aesthetic":13,"maintain":47,"overall":35.32},{"cid":"cloudflare-reference:gpt-6-luna:high","conn":"cloudflare-reference","effort":"high","backend":25.156,"frontend":14.137834113659611,"knowledge":50,"aesthetic":30,"maintain":47,"overall":33.72},{"cid":"cloudflare-reference:gpt-6-luna:medium","conn":"cloudflare-reference","effort":"medium","backend":14.4975,"frontend":35.27355641604858,"knowledge":25,"aesthetic":22,"maintain":41,"overall":25.34},{"cid":"codex-local:gpt-6-luna:medium","conn":"codex-local","effort":"medium","backend":17.036,"frontend":4.9147071872227155,"knowledge":25,"aesthetic":11,"maintain":46,"overall":20.65},{"cid":"cloudflare-reference:gpt-6-luna:low","conn":"cloudflare-reference","effort":"low","backend":15.4005,"frontend":9.387830140107573,"knowledge":25,"aesthetic":11,"maintain":41,"overall":20.08}],"gemini-3.8-flash-high":[{"cid":"GEMINI:gemini-3.8-flash-high:default","conn":"GEMINI","effort":"default","backend":32.9425,"frontend":66.1700198934827,"knowledge":40,"aesthetic":19,"maintain":41,"overall":38.81}],"deepseek-v4-flash":[{"cid":"deepseek:deepseek-v4-flash:high","conn":"deepseek","effort":"high","backend":28.25,"frontend":43.94431289288139,"knowledge":55,"aesthetic":24,"maintain":45,"overall":39.17},{"cid":"deepseek:deepseek-v4-flash:max","conn":"deepseek","effort":"max","backend":27.75,"frontend":13.814870956434103,"knowledge":55,"aesthetic":21,"maintain":43,"overall":33.75}],"qwen3.8-max":[{"cid":"qwen:qwen3.8-max:default","conn":"qwen","effort":"default","backend":36.25,"frontend":35.238006405561336,"knowledge":65,"aesthetic":22,"maintain":49,"overall":43.06}],"deepseek-v4-flash-vision-exp":[{"cid":"deepseek:deepseek-v4-flash-vision-exp:high","conn":"deepseek","effort":"high","backend":57,"frontend":9.501066898722106,"knowledge":70,"aesthetic":61,"maintain":55,"overall":49.88},{"cid":"deepseek:deepseek-v4-flash-vision-exp:max","conn":"deepseek","effort":"max","backend":64,"frontend":0,"knowledge":65,"aesthetic":null,"maintain":null,"overall":null}],"mimo-v2.6-flash":[{"cid":"xiaomi:mimo-v2.6-flash:default","conn":"xiaomi","effort":"default","backend":33.5,"frontend":40.38236807971273,"knowledge":45,"aesthetic":20,"maintain":51,"overall":38.01}],"qwen/qwen3.8-27b":[{"cid":"openrouter:qwen/qwen3.8-27b:default","conn":"openrouter","effort":"default","backend":33,"frontend":70.831255590836,"knowledge":20,"aesthetic":17,"maintain":42,"overall":34.37}],"gpt-5.6-luna":[{"cid":"cloudflare-reference:gpt-5.6-luna:max","conn":"cloudflare-reference","effort":"max","backend":37.678,"frontend":52.75134977391972,"knowledge":25,"aesthetic":16,"maintain":46,"overall":34.77},{"cid":"cloudflare-reference:gpt-5.6-luna:xhigh","conn":"cloudflare-reference","effort":"xhigh","backend":31.659,"frontend":39.707632757600955,"knowledge":25,"aesthetic":27,"maintain":53,"overall":33.7},{"cid":"cloudflare-reference:gpt-5.6-luna:high","conn":"cloudflare-reference","effort":"high","backend":28.71,"frontend":19.393069256718977,"knowledge":15,"aesthetic":15,"maintain":49,"overall":24.87},{"cid":"cloudflare-reference:gpt-5.6-luna:medium","conn":"cloudflare-reference","effort":"medium","backend":30.7785,"frontend":0,"knowledge":25,"aesthetic":18,"maintain":38,"overall":23.88},{"cid":"cloudflare-reference:gpt-5.6-luna:low","conn":"cloudflare-reference","effort":"low","backend":17.9105,"frontend":0,"knowledge":5,"aesthetic":16,"maintain":34,"overall":14.12}],"glm-5.3-flash":[{"cid":"glm:glm-5.3-flash:max","conn":"glm","effort":"max","backend":30,"frontend":32.696510700636615,"knowledge":40,"aesthetic":26,"maintain":45,"overall":34.55},{"cid":"glm:glm-5.3-flash:high","conn":"glm","effort":"high","backend":27.145,"frontend":43.80391543760299,"knowledge":20,"aesthetic":22,"maintain":51,"overall":30.66}],"gemini-3.7-flash-high":[{"cid":"GEMINI:gemini-3.7-flash-high:default","conn":"GEMINI","effort":"default","backend":33.48,"frontend":59.934356469234494,"knowledge":25,"aesthetic":23,"maintain":39,"overall":34.58}],"MiniMax-M3":[{"cid":"minimax:MiniMax-M3:high","conn":"minimax","effort":"high","backend":25.75,"frontend":39.82343693149586,"knowledge":50,"aesthetic":17,"maintain":40,"overall":34.75}],"nvidia/nemotron-3-ultra-550b-a55b:free":[{"cid":"openrouter:nvidia/nemotron-3-ultra-550b-a55b:free:default","conn":"openrouter","effort":"default","backend":24.5,"frontend":9.271078439427301,"knowledge":40,"aesthetic":16,"maintain":29,"overall":25.49},{"cid":"openrouter-opus55:nvidia/nemotron-3-ultra-550b-a55b:free:default","conn":"openrouter-opus55","effort":"default","backend":44,"frontend":5,"knowledge":null,"aesthetic":null,"maintain":null,"overall":null}],"longcat-2.5-preview-free":[{"cid":"opencode:longcat-2.5-preview-free:default","conn":"opencode","effort":"default","backend":39,"frontend":51,"knowledge":null,"aesthetic":null,"maintain":null,"overall":null}],"grok-bot":[{"cid":"grok-bot-agent-tools-20261010","conn":"grok-bot","effort":"unknown","backend":65,"frontend":31.046522404553524,"knowledge":95,"aesthetic":68,"maintain":59,"overall":66.71}],"dot":[{"cid":"dot-shared-context-20261010","conn":"dot","effort":"unknown","backend":85,"frontend":62.594964492534444,"knowledge":85,"aesthetic":70,"maintain":73,"overall":76.7}],"gemini-4-argon":[{"cid":"gemini-4-argon-shared-context-20261012","conn":"gemini-4-argon","effort":"unknown","backend":45.356,"frontend":70.42919931377972,"knowledge":85,"aesthetic":29,"maintain":46,"overall":56.67}],"doubao-seed-2-1-pro-260915":[{"cid":"seedance:doubao-seed-2-1-pro-260915:default","conn":"seedance","effort":"default","backend":36,"frontend":27.353182005522203,"knowledge":55,"aesthetic":17,"maintain":53,"overall":39.15}],"deepseek-flash":[{"cid":"deepseek:deepseek-flash:max","conn":"deepseek","effort":"max","backend":45.1435,"frontend":58.74210515793556,"knowledge":75,"aesthetic":22,"maintain":47,"overall":51.45},{"cid":"deepseek:deepseek-flash:high","conn":"deepseek","effort":"high","backend":38.082,"frontend":54.50752795163217,"knowledge":70,"aesthetic":30,"maintain":44,"overall":48.2},{"cid":"deepseek:deepseek-flash:xhigh","conn":"deepseek","effort":"xhigh","backend":37.167,"frontend":58.876214492534444,"knowledge":75,"aesthetic":18,"maintain":45,"overall":48.18}],"MiniMax-M3.1-Flash":[{"cid":"minimax:MiniMax-M3.1-Flash:max","conn":"minimax","effort":"max","backend":40.802,"frontend":54.38719592187985,"knowledge":80,"aesthetic":22,"maintain":51,"overall":51.35},{"cid":"minimax:MiniMax-M3.1-Flash:xhigh","conn":"minimax","effort":"xhigh","backend":37.462,"frontend":65.37887778786296,"knowledge":75,"aesthetic":33,"maintain":44,"overall":51.35},{"cid":"minimax:MiniMax-M3.1-Flash:high","conn":"minimax","effort":"high","backend":32.356,"frontend":57.378159579704274,"knowledge":65,"aesthetic":15,"maintain":48,"overall":44.01}],"k3.1-pro":[{"cid":"kimi:k3.1-pro:xhigh","conn":"kimi","effort":"xhigh","backend":49.293,"frontend":80.6033862955991,"knowledge":80,"aesthetic":36,"maintain":51,"overall":59.93},{"cid":"kimi:k3.1-pro:high","conn":"kimi","effort":"high","backend":40.842,"frontend":60.82413115920111,"knowledge":80,"aesthetic":36,"maintain":55,"overall":55.03}],"gpt-6.1-terra":[{"cid":"codex-local:gpt-6.1-terra:max","conn":"codex-local","effort":"max","backend":56.6435,"frontend":57.39555973062968,"knowledge":85,"aesthetic":21,"maintain":53,"overall":57.95},{"cid":"codex-local:gpt-6.1-terra:xhigh","conn":"codex-local","effort":"xhigh","backend":46.001,"frontend":54.2880063466939,"knowledge":75,"aesthetic":21,"maintain":64,"overall":53.44},{"cid":"codex-local:gpt-6.1-terra:low","conn":"codex-local","effort":"low","backend":31.2695,"frontend":51.4680073375399,"knowledge":85,"aesthetic":23,"maintain":57,"overall":50.35},{"cid":"codex-local:gpt-6.1-terra:high","conn":"codex-local","effort":"high","backend":32.4315,"frontend":57.39555973062968,"knowledge":70,"aesthetic":23,"maintain":66,"overall":49.19},{"cid":"codex-local:gpt-6.1-terra:medium","conn":"codex-local","effort":"medium","backend":32.164,"frontend":54.101947277596935,"knowledge":75,"aesthetic":22,"maintain":61,"overall":48.96}],"LongCat-2.5":[{"cid":"longcat:LongCat-2.5:default","conn":"longcat","effort":"default","backend":21.9425,"frontend":50.69332528458404,"knowledge":75,"aesthetic":22,"maintain":44,"overall":42.84}],"gemini-4-carbon":[{"cid":"piax-web:gemini-4-carbon:high","conn":"piax-web","effort":"high","backend":55.48,"frontend":71.910344070028,"knowledge":95,"aesthetic":41,"maintain":51,"overall":64.98}],"hy4-dev":[{"cid":"hytest:hy4-dev:default","conn":"hytest","effort":"default","backend":52.106,"frontend":54.330444618298834,"knowledge":75,"aesthetic":29,"maintain":52,"overall":54.68}],"egg-alpha":[{"cid":"jiyuan:egg-alpha:default","conn":"jiyuan","effort":"default","backend":35.25,"frontend":36.86804892872246,"knowledge":85,"aesthetic":22,"maintain":51,"overall":48.31}],"stealth/crouton-alpha":[{"cid":"openrouter:stealth/crouton-alpha:default","conn":"openrouter","effort":"default","backend":25.75,"frontend":28.813718492844405,"knowledge":45,"aesthetic":19,"maintain":45,"overall":32.9}],"Ling-3.2-flash":[{"cid":"bailing:Ling-3.2-flash:default","conn":"bailing","effort":"default","backend":33,"frontend":35.33136136462734,"knowledge":60,"aesthetic":22,"maintain":47,"overall":40.55}],"qoder/lmodel":[{"cid":"mac-gateway:qoder/lmodel:xhigh","conn":"mac-gateway","effort":"xhigh","backend":70,"frontend":55.41942436907765,"knowledge":85,"aesthetic":64,"maintain":55,"overall":69.5}],"gpt-6.2-sol":[{"cid":"codex-local:gpt-6.2-sol:max","conn":"codex-local","effort":"max","backend":65.7815,"frontend":87.29731360240154,"knowledge":85,"aesthetic":39,"maintain":50,"overall":67.43},{"cid":"codex-local:gpt-6.2-sol:high","conn":"codex-local","effort":"high","backend":64.3135,"frontend":88.63109197356309,"knowledge":90,"aesthetic":27,"maintain":52,"overall":66.94},{"cid":"codex-local:gpt-6.2-sol:xhigh","conn":"codex-local","effort":"xhigh","backend":61.4255,"frontend":79.2864451428682,"knowledge":90,"aesthetic":29,"maintain":50,"overall":64.67},{"cid":"codex-local:gpt-6.2-sol:medium","conn":"codex-local","effort":"medium","backend":63.0295,"frontend":86.35728244975357,"knowledge":80,"aesthetic":25,"maintain":50,"overall":63.11},{"cid":"codex-local:gpt-6.2-sol:low","conn":"codex-local","effort":"low","backend":59.9395,"frontend":68.08080385491716,"knowledge":85,"aesthetic":19,"maintain":48,"overall":59.49}],"anthropic/claude-fable-5.2":[{"cid":"openrouter-opus55:anthropic/claude-fable-5.2:max","conn":"openrouter-opus55","effort":"max","backend":56.4335,"frontend":84.55095268501549,"knowledge":100,"aesthetic":53,"maintain":69,"overall":72.91}],"qwen4-max-preview":[{"cid":"bailing:qwen4-max-preview:default","conn":"bailing","effort":"default","backend":80,"frontend":60.00837659130201,"knowledge":90,"aesthetic":59,"maintain":59,"overall":74.3}],"gpt-6.2-astra":[{"cid":"TEST_GPT:gpt-6.2-astra:xhigh","conn":"TEST_GPT","effort":"xhigh","backend":65.5735,"frontend":83.83231264874905,"knowledge":95,"aesthetic":36,"maintain":75,"overall":72.65},{"cid":"TEST_GPT:gpt-6.2-astra:max","conn":"TEST_GPT","effort":"max","backend":68.362,"frontend":85.89590219671777,"knowledge":95,"aesthetic":33,"maintain":68,"overall":72.29},{"cid":"TEST_GPT:gpt-6.2-astra:high","conn":"TEST_GPT","effort":"high","backend":64.9235,"frontend":82.09806242692119,"knowledge":90,"aesthetic":25,"maintain":73,"overall":68.99},{"cid":"TEST_GPT:gpt-6.2-astra:medium","conn":"TEST_GPT","effort":"medium","backend":60.5645,"frontend":79.21333897232196,"knowledge":85,"aesthetic":23,"maintain":73,"overall":65.7},{"cid":"TEST_GPT:gpt-6.2-astra:low","conn":"TEST_GPT","effort":"low","backend":57.9695,"frontend":75.44191040089339,"knowledge":90,"aesthetic":19,"maintain":68,"overall":64.26}],"google/gemini-4-hydrogen":[{"cid":"openrouter:google/gemini-4-hydrogen:default","conn":"openrouter","effort":"default","backend":50.5375,"frontend":71.14730691134943,"knowledge":85,"aesthetic":36,"maintain":48,"overall":59.68}],"baidu/ernie-5.5-flash-preview:free":[{"cid":"openrouter:baidu/ernie-5.5-flash-preview:free:default","conn":"openrouter","effort":"default","backend":27.75,"frontend":22.800089015069496,"knowledge":90,"aesthetic":17,"maintain":47,"overall":43.85}],"qwen4-max":[{"cid":"bailing:qwen4-max:default","conn":"bailing","effort":"default","backend":40.5,"frontend":77.80012083053457,"knowledge":90,"aesthetic":33,"maintain":46,"overall":58.17}],"hy4-flash-dev":[{"cid":"hytest:hy4-flash-dev:default","conn":"hytest","effort":"default","backend":38.802,"frontend":40.32094380506031,"knowledge":55,"aesthetic":25,"maintain":47,"overall":42.24}],"glm-5.4":[{"cid":"glm:glm-5.4:max","conn":"glm","effort":"max","backend":45.937,"frontend":56.74,"knowledge":55,"aesthetic":26,"maintain":51,"overall":47.59}],"qoder/hmodel":[{"cid":"mac-gateway:qoder/hmodel:max","conn":"mac-gateway","effort":"max","backend":44.797,"frontend":48.688,"knowledge":85,"aesthetic":34,"maintain":53,"overall":55.04}],"devin/swe-2-1":[{"cid":"mac-gateway:devin/swe-2-1:max","conn":"mac-gateway","effort":"max","backend":47.5,"frontend":52.71,"knowledge":90,"aesthetic":30,"maintain":55,"overall":57.41}],"google/gemini-4-neon":[{"cid":"openrouter:google/gemini-4-neon:xhigh","conn":"openrouter","effort":"xhigh","backend":58.494,"frontend":70.19556836139877,"knowledge":90,"aesthetic":40,"maintain":59,"overall":65.43},{"cid":"openrouter:google/gemini-4-neon:high","conn":"openrouter","effort":"high","backend":59.744,"frontend":68.448,"knowledge":90,"aesthetic":41,"maintain":51,"overall":64.49}]}},"threeAxis":{"generatedAt":"2026-11-25T13:03:39.071Z","batchId":"overall-5002e0b328995121fadd6116","publishedAt":"2026-11-26T02:41:14.286Z","weights":{"backend":0.4,"frontend":0.3,"knowledge":0.3},"rows":[{"id":"TEST_GPT:gpt-6.2-astra:max","provider":"TEST_GPT","model":"gpt-6.2-astra","effort":"max","display":"gpt-6.2-astra / Max","backend":97,"frontend":91,"knowledge":90,"overall":93.1,"elapsedMs":651609,"costUsd":6.368784},{"id":"codex-local:gpt-6.2-sol:max","provider":"codex-local","model":"gpt-6.2-sol","effort":"max","display":"gpt-6.2-sol / Max","backend":97,"frontend":90,"knowledge":85,"overall":91.3,"elapsedMs":1896506,"costUsd":1.157003},{"id":"cloudflare-reference:gpt-6-astra:xhigh","provider":"cloudflare-reference","model":"gpt-6-astra","effort":"xhigh","display":"gpt-6-astra / XHigh","backend":95,"frontend":94,"knowledge":95,"overall":94.7,"elapsedMs":1842471,"costUsd":3.345352},{"id":"codex-local:gpt-6.1-sol:max","provider":"codex-local","model":"gpt-6.1-sol","effort":"max","display":"gpt-6.1-sol / Max","backend":95,"frontend":96,"knowledge":90,"overall":93.8,"elapsedMs":1956031,"costUsd":1.063781},{"id":"cloudflare-reference:gpt-6-astra:max","provider":"cloudflare-reference","model":"gpt-6-astra","effort":"max","display":"gpt-6-astra / Max","backend":95,"frontend":94,"knowledge":95,"overall":94.7,"elapsedMs":2741473,"costUsd":4.799318},{"id":"TEST_GPT:gpt-6.2-astra:high","provider":"TEST_GPT","model":"gpt-6.2-astra","effort":"high","display":"gpt-6.2-astra / High","backend":94,"frontend":94,"knowledge":90,"overall":92.8,"elapsedMs":192500,"costUsd":1.229104},{"id":"TEST_GPT:gpt-6.2-astra:xhigh","provider":"TEST_GPT","model":"gpt-6.2-astra","effort":"xhigh","display":"gpt-6.2-astra / XHigh","backend":94,"frontend":98,"knowledge":95,"overall":95.5,"elapsedMs":341198,"costUsd":2.320144},{"id":"codex-local:gpt-6.2-sol:medium","provider":"codex-local","model":"gpt-6.2-sol","effort":"medium","display":"gpt-6.2-sol / Medium","backend":93,"frontend":93,"knowledge":80,"overall":89.1,"elapsedMs":594827,"costUsd":0.397885},{"id":"codex-local:gpt-6.2-sol:high","provider":"codex-local","model":"gpt-6.2-sol","effort":"high","display":"gpt-6.2-sol / High","backend":93,"frontend":98,"knowledge":90,"overall":93.6,"elapsedMs":819808,"costUsd":0.598704},{"id":"openrouter:google/gemini-4-neon:high","provider":"openrouter","model":"google/gemini-4-neon","effort":"high","display":"google/gemini-4-neon / High","backend":92,"frontend":68.448,"knowledge":90,"overall":84.3,"elapsedMs":932903,"costUsd":null},{"id":"cloudflare-reference:gpt-6-astra:high","provider":"cloudflare-reference","model":"gpt-6-astra","effort":"high","display":"gpt-6-astra / High","backend":92,"frontend":96,"knowledge":85,"overall":91.1,"elapsedMs":1163012,"costUsd":1.67617},{"id":"cloudflare-reference:gpt-6-astra:medium","provider":"cloudflare-reference","model":"gpt-6-astra","effort":"medium","display":"gpt-6-astra / Medium","backend":91,"frontend":87,"knowledge":85,"overall":88,"elapsedMs":710697,"costUsd":1.499068},{"id":"opencode:union-alpha:default","provider":"opencode","model":"union-alpha","effort":"default","display":"union-alpha / Auto","backend":91,"frontend":84,"knowledge":80,"overall":85.6,"elapsedMs":1196849,"costUsd":0.214663},{"id":"codex-local:gpt-6.2-sol:xhigh","provider":"codex-local","model":"gpt-6.2-sol","effort":"xhigh","display":"gpt-6.2-sol / XHigh","backend":91,"frontend":97,"knowledge":90,"overall":92.5,"elapsedMs":1289337,"costUsd":0.784402},{"id":"codex-local:gpt-6.1-sol:xhigh","provider":"codex-local","model":"gpt-6.1-sol","effort":"xhigh","display":"gpt-6.1-sol / XHigh","backend":90,"frontend":94,"knowledge":85,"overall":89.7,"elapsedMs":1723983,"costUsd":0.727956},{"id":"codex-local:gpt-6.1-terra:max","provider":"codex-local","model":"gpt-6.1-terra","effort":"max","display":"gpt-6.1-terra / Max","backend":89,"frontend":84,"knowledge":85,"overall":86.3,"elapsedMs":475881,"costUsd":0.375352},{"id":"codex-local:gpt-6.1-sol:medium","provider":"codex-local","model":"gpt-6.1-sol","effort":"medium","display":"gpt-6.1-sol / Medium","backend":89,"frontend":83,"knowledge":90,"overall":87.5,"elapsedMs":756619,"costUsd":0.605992},{"id":"codex-local:gpt-6.1-sol:high","provider":"codex-local","model":"gpt-6.1-sol","effort":"high","display":"gpt-6.1-sol / High","backend":89,"frontend":96,"knowledge":85,"overall":89.9,"elapsedMs":1091140,"costUsd":0.653799},{"id":"TEST_GPT:gpt-6.2-astra:medium","provider":"TEST_GPT","model":"gpt-6.2-astra","effort":"medium","display":"gpt-6.2-astra / Medium","backend":88,"frontend":92,"knowledge":85,"overall":88.3,"elapsedMs":113382,"costUsd":0.564944},{"id":"codex-local:gpt-6.2-sol:low","provider":"codex-local","model":"gpt-6.2-sol","effort":"low","display":"gpt-6.2-sol / Low","backend":88,"frontend":89,"knowledge":85,"overall":87.4,"elapsedMs":404581,"costUsd":0.403872},{"id":"cloudflare-reference:gpt-6-astra:low","provider":"cloudflare-reference","model":"gpt-6-astra","effort":"low","display":"gpt-6-astra / Low","backend":88,"frontend":92,"knowledge":85,"overall":88.3,"elapsedMs":753236,"costUsd":1.525626},{"id":"grok-api:grok-4.7:high","provider":"grok-api","model":"grok-4.7","effort":"high","display":"grok-4.7 / High","backend":87,"frontend":74,"knowledge":85,"overall":82.5,"elapsedMs":4648617,"costUsd":1.995124},{"id":"TEST_GPT:gpt-6.2-astra:low","provider":"TEST_GPT","model":"gpt-6.2-astra","effort":"low","display":"gpt-6.2-astra / Low","backend":85,"frontend":94,"knowledge":90,"overall":89.2,"elapsedMs":103530,"costUsd":0.430064},{"id":"openrouter-opus55:anthropic/claude-sonnet-5.5:xhigh","provider":"openrouter-opus55","model":"anthropic/claude-sonnet-5.5","effort":"xhigh","display":"anthropic/claude-sonnet-5.5 / XHigh","backend":84,"frontend":86,"knowledge":85,"overall":84.9,"elapsedMs":903177,"costUsd":1.501428},{"id":"grok-api:grok-4.7:xhigh","provider":"grok-api","model":"grok-4.7","effort":"xhigh","display":"grok-4.7 / XHigh","backend":84,"frontend":73,"knowledge":80,"overall":79.5,"elapsedMs":5280210,"costUsd":2.149556},{"id":"openrouter:google/gemini-4-hydrogen:default","provider":"openrouter","model":"google/gemini-4-hydrogen","effort":"default","display":"google/gemini-4-hydrogen / Auto","backend":83,"frontend":null,"knowledge":null,"overall":null,"elapsedMs":231358,"costUsd":0.754084},{"id":"cloudflare-reference:gpt-5.6-sol:max","provider":"cloudflare-reference","model":"gpt-5.6-sol","effort":"max","display":"gpt-5.6-sol / Max","backend":83,"frontend":73,"knowledge":75,"overall":77.6,"elapsedMs":1759476,"costUsd":1.710444},{"id":"Claude:claude-fable-5-1:max","provider":"Claude","model":"claude-fable-5-1","effort":"max","display":"claude-fable-5-1 / Max","backend":83,"frontend":91,"knowledge":95,"overall":89,"elapsedMs":2624640,"costUsd":12.76964},{"id":"codex-local:gpt-6.1-sol:low","provider":"codex-local","model":"gpt-6.1-sol","effort":"low","display":"gpt-6.1-sol / Low","backend":82,"frontend":94,"knowledge":85,"overall":86.5,"elapsedMs":634486,"costUsd":0.569192},{"id":"Claude:claude-opus-5-5:max","provider":"Claude","model":"claude-opus-5-5","effort":"max","display":"claude-opus-5-5 / Max","backend":81,"frontend":97,"knowledge":100,"overall":91.5,"elapsedMs":568802,"costUsd":6.058056},{"id":"Claude:claude-opus-5-5:xhigh","provider":"Claude","model":"claude-opus-5-5","effort":"xhigh","display":"claude-opus-5-5 / XHigh","backend":81,"frontend":85,"knowledge":95,"overall":86.4,"elapsedMs":604244,"costUsd":1.12764},{"id":"Claude:claude-fable-5-1:xhigh","provider":"Claude","model":"claude-fable-5-1","effort":"xhigh","display":"claude-fable-5-1 / XHigh","backend":81,"frontend":90,"knowledge":95,"overall":87.9,"elapsedMs":1579615,"costUsd":7.10619},{"id":"kimi:k3.1-pro:xhigh","provider":"kimi","model":"k3.1-pro","effort":"xhigh","display":"k3.1-pro / XHigh","backend":81,"frontend":91,"knowledge":80,"overall":83.7,"elapsedMs":2553912,"costUsd":1.873758},{"id":"bailing:qwen4-max-preview:default","provider":"bailing","model":"qwen4-max-preview","effort":"default","display":"Qwen 4 Max Preview / Auto","backend":80,"frontend":78,"knowledge":95,"overall":83.9,"elapsedMs":1116359,"costUsd":null},{"id":"openrouter:meta/muse-wonder:max","provider":"openrouter","model":"meta/muse-wonder","effort":"max","display":"meta/muse-wonder / Max","backend":78,"frontend":80,"knowledge":90,"overall":82.2,"elapsedMs":875001,"costUsd":2.52538},{"id":"cloudflare-reference:gpt-6-sol:max","provider":"cloudflare-reference","model":"gpt-6-sol","effort":"max","display":"gpt-6-sol / Max","backend":78,"frontend":88,"knowledge":70,"overall":78.6,"elapsedMs":1105013,"costUsd":0.563586},{"id":"cloudflare-reference:gpt-5.6-terra:max","provider":"cloudflare-reference","model":"gpt-5.6-terra","effort":"max","display":"gpt-5.6-terra / Max","backend":78,"frontend":76,"knowledge":55,"overall":70.5,"elapsedMs":4545081,"costUsd":0.703225},{"id":"cloudflare-reference:gpt-6-sol:xhigh","provider":"cloudflare-reference","model":"gpt-6-sol","effort":"xhigh","display":"gpt-6-sol / XHigh","backend":77,"frontend":92,"knowledge":75,"overall":80.9,"elapsedMs":912749,"costUsd":0.457912},{"id":"cloudflare-reference:gpt-5.6-sol:xhigh","provider":"cloudflare-reference","model":"gpt-5.6-sol","effort":"xhigh","display":"gpt-5.6-sol / XHigh","backend":76,"frontend":63,"knowledge":65,"overall":68.8,"elapsedMs":1182011,"costUsd":1.187186},{"id":"bailing:qwen4-max:default","provider":"bailing","model":"qwen4-max","effort":"default","display":"Qwen 4 / Max","backend":75,"frontend":87,"knowledge":90,"overall":83.1,"elapsedMs":523502,"costUsd":0.364979},{"id":"grok-api:grok-4.6:xhigh","provider":"grok-api","model":"grok-4.6","effort":"xhigh","display":"grok-4.6 / XHigh","backend":75,"frontend":76,"knowledge":85,"overall":78.3,"elapsedMs":2588172,"costUsd":0.709996},{"id":"codex-local:gpt-6.1-terra:xhigh","provider":"codex-local","model":"gpt-6.1-terra","effort":"xhigh","display":"gpt-6.1-terra / XHigh","backend":73,"frontend":77,"knowledge":75,"overall":74.8,"elapsedMs":194839,"costUsd":0.160886},{"id":"cloudflare-reference:gpt-5.6-sol:high","provider":"cloudflare-reference","model":"gpt-5.6-sol","effort":"high","display":"gpt-5.6-sol / High","backend":73,"frontend":88,"knowledge":65,"overall":75.1,"elapsedMs":756509,"costUsd":0.744436},{"id":"openrouter:meta/muse-wonder:high","provider":"openrouter","model":"meta/muse-wonder","effort":"high","display":"meta/muse-wonder / High","backend":72,"frontend":74,"knowledge":80,"overall":75,"elapsedMs":328168,"costUsd":1.19126},{"id":"openrouter:meta/muse-wonder:xhigh","provider":"openrouter","model":"meta/muse-wonder","effort":"xhigh","display":"meta/muse-wonder / XHigh","backend":72,"frontend":81,"knowledge":80,"overall":77.1,"elapsedMs":627729,"costUsd":2.14634},{"id":"cloudflare-reference:gpt-6-sol:high","provider":"cloudflare-reference","model":"gpt-6-sol","effort":"high","display":"gpt-6-sol / High","backend":72,"frontend":79,"knowledge":70,"overall":73.5,"elapsedMs":684218,"costUsd":0.336902},{"id":"minimax:MiniMax-M3.1-Flash-Preview:max","provider":"minimax","model":"MiniMax-M3.1-Flash-Preview","effort":"max","display":"MiniMax-M3.1-Flash-Preview / Max","backend":71,"frontend":53,"knowledge":75,"overall":66.8,"elapsedMs":1114913,"costUsd":null},{"id":"Claude:claude-fable-5-1:high","provider":"Claude","model":"claude-fable-5-1","effort":"high","display":"claude-fable-5-1 / High","backend":70,"frontend":81,"knowledge":90,"overall":79.3,"elapsedMs":529947,"costUsd":2.53839},{"id":"cloudflare-reference:gpt-5.6-sol:medium","provider":"cloudflare-reference","model":"gpt-5.6-sol","effort":"medium","display":"gpt-5.6-sol / Medium","backend":70,"frontend":80,"knowledge":70,"overall":73,"elapsedMs":670543,"costUsd":0.712792},{"id":"mac-gateway:qoder/lmodel:xhigh","provider":"mac-gateway","model":"qoder/lmodel","effort":"xhigh","display":"qoder/lmodel / XHigh","backend":70,"frontend":80,"knowledge":85,"overall":77.5,"elapsedMs":986786,"costUsd":null},{"id":"Claude:claude-opus-5:xhigh","provider":"Claude","model":"claude-opus-5","effort":"xhigh","display":"claude-opus-5 / XHigh","backend":70,"frontend":82,"knowledge":85,"overall":78.1,"elapsedMs":1121975,"costUsd":2.01292},{"id":"minimax:MiniMax-M3.1-Flash:max","provider":"minimax","model":"MiniMax-M3.1-Flash","effort":"max","display":"MiniMax-M3.1-Flash / Max","backend":70,"frontend":75,"knowledge":80,"overall":74.5,"elapsedMs":1851844,"costUsd":0.112564},{"id":"hytest:hy4-flash-dev:default","provider":"hytest","model":"hy4-flash-dev","effort":"default","display":"hy4-flash-dev / Auto","backend":69,"frontend":74,"knowledge":55,"overall":66.3,"elapsedMs":482531,"costUsd":0.031338},{"id":"deepseek:deepseek-flash:max","provider":"deepseek","model":"deepseek-flash","effort":"max","display":"deepseek-flash / Max","backend":69,"frontend":91,"knowledge":75,"overall":77.4,"elapsedMs":916488,"costUsd":0.118702},{"id":"hy:hy4-preview:high","provider":"hy","model":"hy4-preview","effort":"high","display":"hy4-preview / High","backend":69,"frontend":67,"knowledge":65,"overall":67.2,"elapsedMs":4058795,"costUsd":0.404662},{"id":"opencode:muse-spark-1.3-contributor:default","provider":"opencode","model":"muse-spark-1.3-contributor","effort":"default","display":"muse-spark-1.3-contributor / Auto","backend":68,"frontend":85,"knowledge":75,"overall":75.2,"elapsedMs":383049,"costUsd":0.023875},{"id":"kimi:k3.1-pro:high","provider":"kimi","model":"k3.1-pro","effort":"high","display":"k3.1-pro / High","backend":68,"frontend":85,"knowledge":80,"overall":76.7,"elapsedMs":781588,"costUsd":0.614758},{"id":"openrouter:meta/muse-wonder:default","provider":"openrouter","model":"meta/muse-wonder","effort":"default","display":"meta/muse-wonder / Auto","backend":67,"frontend":75,"knowledge":60,"overall":67.3,"elapsedMs":184982,"costUsd":0.90646},{"id":"glm:glm-5.3:max","provider":"glm","model":"glm-5.3","effort":"max","display":"glm-5.3 / Max","backend":67,"frontend":72,"knowledge":70,"overall":69.4,"elapsedMs":1033874,"costUsd":0.442975},{"id":"grok-api:grok-4.6:high","provider":"grok-api","model":"grok-4.6","effort":"high","display":"grok-4.6 / High","backend":67,"frontend":71,"knowledge":80,"overall":72.1,"elapsedMs":1291162,"costUsd":0.744954},{"id":"glm:glm-5.3:high","provider":"glm","model":"glm-5.3","effort":"high","display":"glm-5.3 / High","backend":66,"frontend":80,"knowledge":50,"overall":65.4,"elapsedMs":1180962,"costUsd":0.481723},{"id":"Claude:claude-opus-5:max","provider":"Claude","model":"claude-opus-5","effort":"max","display":"claude-opus-5 / Max","backend":66,"frontend":82,"knowledge":95,"overall":79.5,"elapsedMs":1623481,"costUsd":3.131445},{"id":"xiaomi:mimo-v2.6-pro:default","provider":"xiaomi","model":"mimo-v2.6-pro","effort":"default","display":"mimo-v2.6-pro / Auto","backend":66,"frontend":81,"knowledge":65,"overall":70.2,"elapsedMs":4805113,"costUsd":0.178412},{"id":"openrouter-opus55:anthropic/haiku-5.5:xhigh","provider":"openrouter-opus55","model":"anthropic/haiku-5.5","effort":"xhigh","display":"anthropic/haiku-5.5 / XHigh","backend":65,"frontend":76,"knowledge":60,"overall":66.8,"elapsedMs":490975,"costUsd":0.077167},{"id":"cloudflare-reference:gpt-5.6-sol:low","provider":"cloudflare-reference","model":"gpt-5.6-sol","effort":"low","display":"gpt-5.6-sol / Low","backend":65,"frontend":72,"knowledge":60,"overall":65.6,"elapsedMs":511469,"costUsd":0.56435},{"id":"cloudflare-reference:gpt-6-sol:medium","provider":"cloudflare-reference","model":"gpt-6-sol","effort":"medium","display":"gpt-6-sol / Medium","backend":65,"frontend":83,"knowledge":65,"overall":70.4,"elapsedMs":617186,"costUsd":0.299869},{"id":"Claude:claude-opus-5:high","provider":"Claude","model":"claude-opus-5","effort":"high","display":"claude-opus-5 / High","backend":65,"frontend":80,"knowledge":90,"overall":77,"elapsedMs":743034,"costUsd":1.19482},{"id":"jiyuan:egg-alpha:default","provider":"jiyuan","model":"egg-alpha","effort":"default","display":"egg-alpha / Auto","backend":65,"frontend":78,"knowledge":90,"overall":76.4,"elapsedMs":1027364,"costUsd":null},{"id":"kimi:k3:high","provider":"kimi","model":"k3","effort":"high","display":"k3 / High","backend":65,"frontend":82,"knowledge":70,"overall":71.6,"elapsedMs":2276292,"costUsd":0.890997},{"id":"qwen:qwen3.8-max:default","provider":"qwen","model":"qwen3.8-max","effort":"default","display":"Qwen 3.8 / Max","backend":65,"frontend":67,"knowledge":65,"overall":65.6,"elapsedMs":3566833,"costUsd":1.032808},{"id":"deepseek:deepseek-v4-flash-vision-exp:max","provider":"deepseek","model":"deepseek-v4-flash-vision-exp","effort":"max","display":"deepseek-v4-flash-vision-exp / Max","backend":64,"frontend":15,"knowledge":65,"overall":49.6,"elapsedMs":851743,"costUsd":0.110209},{"id":"seedance:doubao-seed-2-1-pro-260915:default","provider":"seedance","model":"doubao-seed-2-1-pro-260915","effort":"default","display":"doubao-seed-2-1-pro-260915 / Auto","backend":64,"frontend":61,"knowledge":55,"overall":60.4,"elapsedMs":1182888,"costUsd":0.497731},{"id":"minimax:MiniMax-M3.1-Flash:xhigh","provider":"minimax","model":"MiniMax-M3.1-Flash","effort":"xhigh","display":"MiniMax-M3.1-Flash / XHigh","backend":64,"frontend":78,"knowledge":75,"overall":71.5,"elapsedMs":1502345,"costUsd":0.069415},{"id":"deepseek:deepseek-v4-pro:max","provider":"deepseek","model":"deepseek-v4-pro","effort":"max","display":"deepseek-v4-pro / Max","backend":64,"frontend":60,"knowledge":65,"overall":63.1,"elapsedMs":1613458,"costUsd":0.44305},{"id":"minimax:MiniMax-M3.1-Flash-Preview:high","provider":"minimax","model":"MiniMax-M3.1-Flash-Preview","effort":"high","display":"MiniMax-M3.1-Flash-Preview / High","backend":63,"frontend":null,"knowledge":null,"overall":null,"elapsedMs":508129,"costUsd":null},{"id":"cloudflare-reference:gpt-5.6-terra:xhigh","provider":"cloudflare-reference","model":"gpt-5.6-terra","effort":"xhigh","display":"gpt-5.6-terra / XHigh","backend":62,"frontend":68,"knowledge":35,"overall":55.7,"elapsedMs":1828861,"costUsd":0.653496},{"id":"cloudflare-reference:gpt-5.6-terra:high","provider":"cloudflare-reference","model":"gpt-5.6-terra","effort":"high","display":"gpt-5.6-terra / High","backend":61,"frontend":58,"knowledge":45,"overall":55.3,"elapsedMs":1067005,"costUsd":0.403284},{"id":"cloudflare-reference:gpt-5.6-luna:max","provider":"cloudflare-reference","model":"gpt-5.6-luna","effort":"max","display":"gpt-5.6-luna / Max","backend":61,"frontend":74,"knowledge":25,"overall":54.1,"elapsedMs":2906014,"costUsd":0.171555},{"id":"deepseek:deepseek-flash:high","provider":"deepseek","model":"deepseek-flash","effort":"high","display":"deepseek-flash / High","backend":60,"frontend":81,"knowledge":70,"overall":69.3,"elapsedMs":480019,"costUsd":0.069235},{"id":"GEMINI:gemini-3.8-flash-high:default","provider":"GEMINI","model":"gemini-3.8-flash-high","effort":"default","display":"Gemini 3.8 Flash / High","backend":60,"frontend":84,"knowledge":40,"overall":61.2,"elapsedMs":815239,"costUsd":0.060607},{"id":"Claude:claude-opus-4-8:max","provider":"Claude","model":"claude-opus-4-8","effort":"max","display":"claude-opus-4-8 / Max","backend":60,"frontend":88,"knowledge":85,"overall":75.9,"elapsedMs":3796135,"costUsd":8.369545},{"id":"GEMINI:gemini-3.7-flash-high:default","provider":"GEMINI","model":"gemini-3.7-flash-high","effort":"default","display":"Gemini 3.7 Flash / High","backend":59,"frontend":67,"knowledge":25,"overall":51.2,"elapsedMs":355964,"costUsd":0.068797},{"id":"bailing:Ling-3.2-flash:default","provider":"bailing","model":"Ling-3.2-flash","effort":"default","display":"Ling-3.2-flash / Auto","backend":59,"frontend":null,"knowledge":null,"overall":null,"elapsedMs":839978,"costUsd":null},{"id":"openrouter:qwen/qwen3.8-27b:default","provider":"openrouter","model":"qwen/qwen3.8-27b","effort":"default","display":"qwen/qwen3.8-27b / Auto","backend":59,"frontend":85,"knowledge":20,"overall":55.1,"elapsedMs":1379073,"costUsd":0.426208},{"id":"qwen:qwen3.8-flash:default","provider":"qwen","model":"qwen3.8-flash","effort":"default","display":"Qwen 3.8 / Flash","backend":59,"frontend":70,"knowledge":50,"overall":59.6,"elapsedMs":3000829,"costUsd":0.100806},{"id":"deepseek:deepseek-flash:xhigh","provider":"deepseek","model":"deepseek-flash","effort":"xhigh","display":"deepseek-flash / XHigh","backend":58,"frontend":83,"knowledge":75,"overall":70.6,"elapsedMs":470521,"costUsd":0.057607},{"id":"deepseek:deepseek-v4.1-flash-expires-on-0910:max","provider":"deepseek","model":"deepseek-v4.1-flash-expires-on-0910","effort":"max","display":"deepseek-v4.1-flash-expires-on-0910 / Max","backend":57,"frontend":78,"knowledge":65,"overall":65.7,"elapsedMs":753401,"costUsd":0.103916},{"id":"deepseek:deepseek-v4-flash-vision-exp:high","provider":"deepseek","model":"deepseek-v4-flash-vision-exp","effort":"high","display":"deepseek-v4-flash-vision-exp / High","backend":57,"frontend":39,"knowledge":70,"overall":55.5,"elapsedMs":791010,"costUsd":0.101964},{"id":"minimax:MiniMax-M3.1-Flash:high","provider":"minimax","model":"MiniMax-M3.1-Flash","effort":"high","display":"MiniMax-M3.1-Flash / High","backend":57,"frontend":80,"knowledge":65,"overall":66.3,"elapsedMs":824813,"costUsd":0.053094},{"id":"cloudflare-reference:gpt-6-luna:max","provider":"cloudflare-reference","model":"gpt-6-luna","effort":"max","display":"gpt-6-luna / Max","backend":57,"frontend":73,"knowledge":30,"overall":53.7,"elapsedMs":1054690,"costUsd":0.029052},{"id":"cloudflare-reference:gpt-6-luna:xhigh","provider":"cloudflare-reference","model":"gpt-6-luna","effort":"xhigh","display":"gpt-6-luna / XHigh","backend":57,"frontend":78,"knowledge":50,"overall":61.2,"elapsedMs":1073565,"costUsd":0.022862},{"id":"opencode:space-bunny-free:default","provider":"opencode","model":"space-bunny-free","effort":"default","display":"space-bunny-free / Auto","backend":57,"frontend":74,"knowledge":75,"overall":67.5,"elapsedMs":1173135,"costUsd":0},{"id":"stepfun:step-5-preview:default","provider":"stepfun","model":"step-5-preview","effort":"default","display":"step-5-preview / Auto","backend":56,"frontend":61,"knowledge":75,"overall":63.2,"elapsedMs":432480,"costUsd":0.341953},{"id":"deepseek:deepseek-v4-pro:high","provider":"deepseek","model":"deepseek-v4-pro","effort":"high","display":"deepseek-v4-pro / High","backend":56,"frontend":50,"knowledge":75,"overall":59.9,"elapsedMs":1346289,"costUsd":0.297351},{"id":"Claude:claude-opus-4-8:xhigh","provider":"Claude","model":"claude-opus-4-8","effort":"xhigh","display":"claude-opus-4-8 / XHigh","backend":56,"frontend":85,"knowledge":90,"overall":74.9,"elapsedMs":2056248,"costUsd":3.923295},{"id":"codex-local:gpt-6.1-terra:high","provider":"codex-local","model":"gpt-6.1-terra","effort":"high","display":"gpt-6.1-terra / High","backend":55,"frontend":81,"knowledge":70,"overall":67.3,"elapsedMs":134528,"costUsd":0.138051},{"id":"codex-local:gpt-6.1-terra:medium","provider":"codex-local","model":"gpt-6.1-terra","effort":"medium","display":"gpt-6.1-terra / Medium","backend":55,"frontend":83,"knowledge":75,"overall":69.4,"elapsedMs":145355,"costUsd":0.114853},{"id":"kimi:kimi-for-coding:high","provider":"kimi","model":"kimi-for-coding","effort":"high","display":"kimi-for-coding / High","backend":55,"frontend":65,"knowledge":70,"overall":62.5,"elapsedMs":1333918,"costUsd":0.211338},{"id":"deepseek:deepseek-v4-flash:max","provider":"deepseek","model":"deepseek-v4-flash","effort":"max","display":"deepseek-v4-flash / Max","backend":54,"frontend":55,"knowledge":55,"overall":54.6,"elapsedMs":847707,"costUsd":0.118587},{"id":"cloudflare-reference:gpt-5.6-luna:xhigh","provider":"cloudflare-reference","model":"gpt-5.6-luna","effort":"xhigh","display":"gpt-5.6-luna / XHigh","backend":54,"frontend":78,"knowledge":25,"overall":52.5,"elapsedMs":1388979,"costUsd":0.070896},{"id":"xiaomi:mimo-v2.6-flash:default","provider":"xiaomi","model":"mimo-v2.6-flash","effort":"default","display":"mimo-v2.6-flash / Auto","backend":54,"frontend":67,"knowledge":45,"overall":55.2,"elapsedMs":2135528,"costUsd":0.043126},{"id":"codex-local:gpt-6.1-terra:low","provider":"codex-local","model":"gpt-6.1-terra","effort":"low","display":"gpt-6.1-terra / Low","backend":53,"frontend":78,"knowledge":85,"overall":70.1,"elapsedMs":128766,"costUsd":0.138679},{"id":"deepseek:deepseek-v4-flash:high","provider":"deepseek","model":"deepseek-v4-flash","effort":"high","display":"deepseek-v4-flash / High","backend":53,"frontend":67,"knowledge":55,"overall":57.8,"elapsedMs":695955,"costUsd":0.090057},{"id":"openrouter:baidu/ernie-5.5-flash-preview:free:default","provider":"openrouter","model":"baidu/ernie-5.5-flash-preview:free","effort":"default","display":"baidu/ernie-5.5-flash-preview:free / Auto","backend":52,"frontend":null,"knowledge":null,"overall":null,"elapsedMs":315344,"costUsd":0.079414},{"id":"glm:glm-5.3-flash:max","provider":"glm","model":"glm-5.3-flash","effort":"max","display":"glm-5.3-flash / Max","backend":52,"frontend":71,"knowledge":40,"overall":54.1,"elapsedMs":1453960,"costUsd":0.023449},{"id":"deepseek:deepseek-v4.1-flash-expires-on-0910:high","provider":"deepseek","model":"deepseek-v4.1-flash-expires-on-0910","effort":"high","display":"deepseek-v4.1-flash-expires-on-0910 / High","backend":50,"frontend":40,"knowledge":50,"overall":47,"elapsedMs":548265,"costUsd":0.071557},{"id":"glm:glm-5.3-flash:high","provider":"glm","model":"glm-5.3-flash","effort":"high","display":"glm-5.3-flash / High","backend":50,"frontend":69,"knowledge":20,"overall":46.7,"elapsedMs":1302897,"costUsd":0.017581},{"id":"cloudflare-reference:gpt-6-sol:low","provider":"cloudflare-reference","model":"gpt-6-sol","effort":"low","display":"gpt-6-sol / Low","backend":49,"frontend":76,"knowledge":70,"overall":63.4,"elapsedMs":461925,"costUsd":0.213937},{"id":"cloudflare-reference:gpt-5.6-terra:low","provider":"cloudflare-reference","model":"gpt-5.6-terra","effort":"low","display":"gpt-5.6-terra / Low","backend":49,"frontend":19,"knowledge":30,"overall":34.3,"elapsedMs":580795,"costUsd":0.224345},{"id":"mac-gateway:devin/swe-2-1:max","provider":"mac-gateway","model":"devin/swe-2-1","effort":"max","display":"devin/swe-2-1 / Max","backend":47.5,"frontend":52.71,"knowledge":90,"overall":61.8,"elapsedMs":8677032,"costUsd":null},{"id":"minimax:MiniMax-M3.1-Flash-Preview:xhigh","provider":"minimax","model":"MiniMax-M3.1-Flash-Preview","effort":"xhigh","display":"MiniMax-M3.1-Flash-Preview / XHigh","backend":47,"frontend":null,"knowledge":null,"overall":null,"elapsedMs":523553,"costUsd":null},{"id":"cloudflare-reference:gpt-5.6-luna:medium","provider":"cloudflare-reference","model":"gpt-5.6-luna","effort":"medium","display":"gpt-5.6-luna / Medium","backend":47,"frontend":13,"knowledge":25,"overall":30.2,"elapsedMs":655052,"costUsd":0.035132},{"id":"cloudflare-reference:gpt-5.6-terra:medium","provider":"cloudflare-reference","model":"gpt-5.6-terra","effort":"medium","display":"gpt-5.6-terra / Medium","backend":46,"frontend":45,"knowledge":50,"overall":46.9,"elapsedMs":744829,"costUsd":0.31789},{"id":"glm:glm-5.4:max","provider":"glm","model":"glm-5.4","effort":"max","display":"glm-5.4 / Max","backend":45.937,"frontend":56.74,"knowledge":55,"overall":51.9,"elapsedMs":3454532,"costUsd":null},{"id":"openrouter:stealth/crouton-alpha:default","provider":"openrouter","model":"stealth/crouton-alpha","effort":"default","display":"stealth/crouton-alpha / Auto","backend":45,"frontend":64,"knowledge":45,"overall":50.7,"elapsedMs":82312,"costUsd":null},{"id":"cloudflare-reference:gpt-5.6-luna:high","provider":"cloudflare-reference","model":"gpt-5.6-luna","effort":"high","display":"gpt-5.6-luna / High","backend":45,"frontend":46,"knowledge":15,"overall":36.3,"elapsedMs":1132157,"costUsd":0.061496},{"id":"openrouter-opus55:nvidia/nemotron-3-ultra-550b-a55b:free:default","provider":"openrouter-opus55","model":"nvidia/nemotron-3-ultra-550b-a55b:free","effort":"default","display":"nvidia/nemotron-3-ultra-550b-a55b:free / Auto","backend":44,"frontend":null,"knowledge":null,"overall":null,"elapsedMs":921048,"costUsd":0},{"id":"longcat:LongCat-2.5:default","provider":"longcat","model":"LongCat-2.5","effort":"default","display":"LongCat-2.5 / Auto","backend":44,"frontend":62,"knowledge":75,"overall":58.7,"elapsedMs":2356813,"costUsd":0.208885},{"id":"minimax:MiniMax-M3:high","provider":"minimax","model":"MiniMax-M3","effort":"high","display":"MiniMax-M3 / High","backend":43,"frontend":59,"knowledge":50,"overall":49.9,"elapsedMs":1325984,"costUsd":0.313887},{"id":"cloudflare-reference:gpt-6-luna:high","provider":"cloudflare-reference","model":"gpt-6-luna","effort":"high","display":"gpt-6-luna / High","backend":42,"frontend":42,"knowledge":50,"overall":44.4,"elapsedMs":705870,"costUsd":0.013051},{"id":"openrouter:nvidia/nemotron-3-ultra-550b-a55b:free:default","provider":"openrouter","model":"nvidia/nemotron-3-ultra-550b-a55b:free","effort":"default","display":"nvidia/nemotron-3-ultra-550b-a55b:free / Auto","backend":42,"frontend":34,"knowledge":40,"overall":39,"elapsedMs":1023164,"costUsd":0},{"id":"Claude:claude-opus-4-8:high","provider":"Claude","model":"claude-opus-4-8","effort":"high","display":"claude-opus-4-8 / High","backend":42,"frontend":68,"knowledge":75,"overall":59.7,"elapsedMs":1096813,"costUsd":1.73732},{"id":"opencode:longcat-2.5-preview-free:default","provider":"opencode","model":"longcat-2.5-preview-free","effort":"default","display":"longcat-2.5-preview-free / Auto","backend":39,"frontend":null,"knowledge":null,"overall":null,"elapsedMs":1167829,"costUsd":null},{"id":"minimax:MiniMax-M3.1-Flash-Preview:medium","provider":"minimax","model":"MiniMax-M3.1-Flash-Preview","effort":"medium","display":"MiniMax-M3.1-Flash-Preview / Medium","backend":34,"frontend":null,"knowledge":null,"overall":null,"elapsedMs":267594,"costUsd":null},{"id":"minimax:MiniMax-M3.1-Flash-Preview:low","provider":"minimax","model":"MiniMax-M3.1-Flash-Preview","effort":"low","display":"MiniMax-M3.1-Flash-Preview / Low","backend":30,"frontend":null,"knowledge":null,"overall":null,"elapsedMs":201412,"costUsd":null},{"id":"cloudflare-reference:gpt-5.6-luna:low","provider":"cloudflare-reference","model":"gpt-5.6-luna","effort":"low","display":"gpt-5.6-luna / Low","backend":30,"frontend":18,"knowledge":5,"overall":18.9,"elapsedMs":365855,"costUsd":0.022972},{"id":"codex-local:gpt-6-luna:medium","provider":"codex-local","model":"gpt-6-luna","effort":"medium","display":"gpt-6-luna / Medium","backend":29,"frontend":30,"knowledge":25,"overall":28.1,"elapsedMs":105099,"costUsd":0.014008},{"id":"cloudflare-reference:gpt-6-luna:low","provider":"cloudflare-reference","model":"gpt-6-luna","effort":"low","display":"gpt-6-luna / Low","backend":23,"frontend":43,"knowledge":25,"overall":29.6,"elapsedMs":550403,"costUsd":0.007169},{"id":"cloudflare-reference:gpt-6-luna:medium","provider":"cloudflare-reference","model":"gpt-6-luna","effort":"medium","display":"gpt-6-luna / Medium","backend":23,"frontend":47,"knowledge":25,"overall":30.8,"elapsedMs":605310,"costUsd":0.008427}]},"coverage":{"go":32,"matched":26,"exact":23,"family":3,"missing":["glm-5.2","hy3","qwen3.7-plus","muse-spark-1.2-contributor","beam-free","iceman-contributor-free"],"conflicts":["kimi-k3.1-pro"]}}</script>
+  <script>
+(function () {
+  'use strict';
+
+  var PLAN_PRICE = 10;
+  var EMBEDDED = null;
+
+  /* ---------- 工具 ---------- */
+
+  function fmt(n, digits) {
+    if (n == null || !isFinite(n)) return null;
+    var d = digits == null ? 0 : digits;
+    return n.toLocaleString('zh-CN', { minimumFractionDigits: d, maximumFractionDigits: d });
+  }
+
+  function fmtUsd(n) {
+    if (n == null || !isFinite(n)) return null;
+    if (n >= 100) return '$' + fmt(n);
+    if (n >= 1) return '$' + fmt(n, n % 1 === 0 ? 0 : 1);
+    return '$' + n.toFixed(3);
+  }
+
+  function perRequest(n) {
+    if (n == null || !isFinite(n) || n <= 0) return null;
+    if (n >= 1) return '$' + n.toFixed(2);
+    if (n >= 0.01) return '$' + n.toFixed(3);
+    return '$' + n.toFixed(5);
+  }
+
+  function shortNum(n) {
+    if (n == null || !isFinite(n)) return null;
+    if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+    if (n >= 1e4) return (n / 1e3).toFixed(1) + 'k';
+    return fmt(n);
+  }
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function dash(v) {
+    return v == null ? '<span class="dash">—</span>' : v;
+  }
+
+  /* ---------- 状态 ---------- */
+
+  var state = {
+    rows: [],
+    filter: 'all',
+    query: '',
+    sortKey: 'value',
+    sortDir: -1,
+    open: {},
+    source: 'snapshot'
+  };
+
+  /* ---------- 构建行 ---------- */
+
+  // 五轴权重（来自 ModelDial 快照；权重缺失时用官方口径）
+  var FIVE_WEIGHTS = [
+    ['backend', '后端', 0.30],
+    ['frontend', '前端', 0.15],
+    ['knowledge', '知识', 0.25],
+    ['aesthetic', '审美', 0.15],
+    ['maintain', '可维护', 0.15]
+  ];
+
+  function pickFive(data, modelId) {
+    if (!modelId) return null;
+    var bucket = data.fiveAxis && data.fiveAxis.byModel && data.fiveAxis.byModel[modelId];
+    if (!bucket || !bucket.length) return null;
+    // 榜单同一模型可能有多个思考档位，取综合分最高的那一档作代表。
+    return bucket[0];
+  }
+
+  function buildRows(data) {
+    var out = (data.goModels || []).map(function (m) {
+      var five = pickFive(data, m.modelId);
+      var overall = five && five.overall != null ? five.overall : null;
+      var monthlyRequests = m.monthlyRequests != null ? m.monthlyRequests : null;
+      var perDollar = monthlyRequests != null ? monthlyRequests / PLAN_PRICE : null;
+      var value = overall != null && monthlyRequests != null && monthlyRequests > 0
+        ? overall * Math.log10(1 + monthlyRequests)
+        : null;
+
+      return {
+        slug: m.slug,
+        name: m.name,
+        monthlyUsd: m.monthlyUsd,
+        monthlyRequests: monthlyRequests,
+        est5h: m.est5h,
+        perDollar: perDollar,
+        perRequest: perDollar != null ? PLAN_PRICE / perDollar : null,
+        overall: overall,
+        backend: five ? five.backend : null,
+        frontend: five ? five.frontend : null,
+        knowledge: five ? five.knowledge : null,
+        aesthetic: five ? five.aesthetic : null,
+        maintain: five ? five.maintain : null,
+        value: value,
+        confidence: m.confidence,
+        unpublished: m.unpublished,
+        note: m.note,
+        conflict: m.conflict,
+        monthlyUsdApi: m.monthlyUsdApi,
+        free: m.free,
+        limitedRegions: m.limitedRegions,
+        limitedTime: m.limitedTime,
+        training: m.training,
+        contextWindow: m.contextWindow,
+        maxOutput: m.maxOutput,
+        priceIn: m.priceIn,
+        priceOut: m.priceOut,
+        openWeights: m.openWeights,
+        releaseDate: m.releaseDate,
+        description: m.description,
+        apiOnly: m.apiOnly,
+        fiveDetail: five || null
+      };
+    });
+
+    // 性价比归一化到 0–100，用于画条
+    var max = 0;
+    out.forEach(function (r) { if (r.value != null && r.value > max) max = r.value; });
+    out.forEach(function (r) { r.valuePct = max > 0 && r.value != null ? (r.value / max) * 100 : null; });
+
+    return out;
+  }
+
+  /* ---------- 渲染 ---------- */
+
+  function visibleRows() {
+    var q = state.query.trim().toLowerCase();
+    var rows = state.rows.filter(function (r) {
+      if (state.filter === 'scored' && (r.overall == null || r.unpublished)) return false;
+      if (state.filter === 'paid' && (r.monthlyUsd == null || r.free)) return false;
+      if (q && r.name.toLowerCase().indexOf(q) === -1 && r.slug.toLowerCase().indexOf(q) === -1) return false;
+      return true;
+    });
+
+    var key = state.sortKey;
+    var dir = state.sortDir;
+    rows.sort(function (a, b) {
+      // 未发布的评分配置始终排在已发布之后，不论按哪一列排。
+      if (key !== 'name' && a.unpublished !== b.unpublished) {
+        return a.unpublished ? 1 : -1;
+      }
+      var av = a[key];
+      var bv = b[key];
+      if (key === 'name') {
+        return dir * String(av).localeCompare(String(bv), 'zh-Hans-CN');
+      }
+      // 空值始终沉底
+      var an = av == null || (typeof av === 'number' && !isFinite(av));
+      var bn = bv == null || (typeof bv === 'number' && !isFinite(bv));
+      if (an && bn) return String(a.name).localeCompare(String(b.name), 'zh-Hans-CN');
+      if (an) return 1;
+      if (bn) return -1;
+      return dir * (av - bv);
+    });
+
+    return rows;
+  }
+
+  function renderSummary() {
+    var rows = state.rows;
+    var paid = rows.filter(function (r) { return r.monthlyUsd != null && !r.free; });
+    var scored = paid.filter(function (r) { return r.overall != null; });
+
+    document.getElementById('kpi-models').textContent = fmt(rows.length);
+    document.getElementById('kpi-matched').textContent = fmt(scored.length);
+
+    // 最高分只在榜单已发布的模型里取，避免未发布配置霸占头条
+    var topScore = null;
+    paid.forEach(function (r) {
+      if (r.overall == null || r.unpublished) return;
+      if (topScore == null || r.overall > topScore.overall) topScore = r;
+    });
+    var scoreEl = document.getElementById('kpi-score');
+    scoreEl.textContent = topScore ? topScore.overall.toFixed(1) : '—';
+    document.getElementById('kpi-score-note').textContent = topScore ? topScore.name : '五轴综合';
+
+    var topReq = null;
+    paid.forEach(function (r) {
+      if (r.monthlyRequests != null && (topReq == null || r.monthlyRequests > topReq.monthlyRequests)) topReq = r;
+    });
+    document.getElementById('kpi-req').textContent = topReq ? shortNum(topReq.monthlyRequests) : '—';
+    document.getElementById('kpi-req-note').textContent = topReq ? topReq.name : '单模型用满额度';
+
+    var best = null;
+    scored.forEach(function (r) {
+      if (r.value != null && (best == null || r.value > best.value)) best = r;
+    });
+    document.getElementById('kpi-best').textContent = best ? best.value.toFixed(0) : '—';
+    document.getElementById('kpi-best-note').textContent = best ? best.name : '综合分与额度加权';
+  }
+
+  function axisBars(r) {
+    var parts = FIVE_WEIGHTS.map(function (w) {
+      var v = r[w[0]];
+      var pct = v == null ? 0 : Math.max(0, Math.min(100, v));
+      return '<li class="axis">' +
+        '<span class="axis-k">' + w[1] + '</span>' +
+        '<span class="axis-track"><span class="axis-fill" style="width:' + pct.toFixed(1) + '%"></span></span>' +
+        '<span class="axis-v">' + (v == null ? '—' : v.toFixed(0)) + '</span>' +
+        '</li>';
+    }).join('');
+    return '<ul class="axis-list">' + parts + '</ul>';
+  }
+
+  function kv(k, v) {
+    return '<div class="kv"><span class="kv-k">' + esc(k) + '</span><span class="kv-v">' + v + '</span></div>';
+  }
+
+  function detailHtml(r) {
+    var groups = [];
+
+    groups.push('<div class="detail-group"><h4>额度</h4>' +
+      kv('月额度', dash(r.monthlyUsd == null ? null : fmtUsd(r.monthlyUsd))) +
+      kv('月可调用', dash(r.monthlyRequests == null ? null : fmt(Math.round(r.monthlyRequests)) + ' 次')) +
+      kv('5 小时上限', dash(r.est5h == null ? null : fmt(r.est5h) + ' 次')) +
+      kv('每次请求成本', dash(perRequest(r.perRequest))) +
+      '</div>');
+
+    if (r.overall != null) {
+      groups.push('<div class="detail-group"><h4>五轴评分</h4>' + axisBars(r) + '</div>');
+    } else {
+      groups.push('<div class="detail-group"><h4>五轴评分</h4>' +
+        '<div class="kv"><span class="kv-k">榜单无对应记录</span></div>' +
+        '<div class="kv"><span class="kv-k">性价比无法计算</span></div>' +
+        '</div>');
+    }
+
+    var d = r.fiveDetail;
+    if (d) {
+      groups.push('<div class="detail-group"><h4>榜单原始配置</h4>' +
+        kv('连接', esc(d.conn || '—')) +
+        kv('思考档位', esc(d.effort || '—')) +
+        kv('后端', dash(d.backend == null ? null : d.backend.toFixed(1))) +
+        kv('前端', dash(d.frontend == null ? null : d.frontend.toFixed(1))) +
+        '</div>');
+    }
+
+    var spec = [];
+    if (r.contextWindow != null) spec.push(kv('上下文', fmt(r.contextWindow) + ' tokens'));
+    if (r.maxOutput != null) spec.push(kv('最大输出', fmt(r.maxOutput) + ' tokens'));
+    if (r.priceIn != null) spec.push(kv('输入单价', '$' + r.priceIn + ' / 1M'));
+    if (r.priceOut != null) spec.push(kv('输出单价', '$' + r.priceOut + ' / 1M'));
+    if (r.releaseDate) spec.push(kv('发布', esc(r.releaseDate)));
+    if (spec.length) {
+      groups.push('<div class="detail-group"><h4>模型规格</h4>' + spec.join('') + '</div>');
+    }
+
+    var flags = [];
+    if (r.free) flags.push('免费模型，无付费额度');
+    if (r.limitedRegions) flags.push('限地区可用');
+    if (r.limitedTime) flags.push('限时提供');
+    if (r.training === true) flags.push('该模型会用于训练');
+    if (r.confidence === 'family') flags.push('榜单为同系列不同版本，分数仅供参考');
+    if (r.confidence === 'none') flags.push('ModelDial 榜单未收录，无法给出评分');
+    if (r.apiOnly) flags.push('仅出现在模型接口，Go 页面未展示');
+    if (r.unpublished) flags.push('ModelDial 尚未在榜单页发布该配置，分数仅供参考');
+    if (r.note) flags.push(r.note);
+    if (r.conflict) {
+      flags.push('月度额度接口返回 ' + fmtUsd(r.monthlyUsdApi) + '，与页面 ' + fmtUsd(r.monthlyUsd) + ' 不一致，此处采用页面值');
+    }
+    if (r.description) flags.push(r.description);
+
+    var noteHtml = '';
+    if (flags.length) {
+      var isWarn = r.conflict || r.confidence === 'none';
+      noteHtml = '<div class="detail-note' + (isWarn ? ' detail-note--danger' : '') + '">' +
+        flags.map(esc).join(' · ') + '</div>';
+    }
+
+    return '<div class="detail">' + groups.join('') + noteHtml + '</div>';
+  }
+
+  function rowHtml(r, idx) {
+    var tags = [];
+    if (r.confidence === 'family') tags.push('<span class="tag tag--family">同系列</span>');
+    if (r.confidence === 'none') tags.push('<span class="tag tag--none">无评分</span>');
+    if (r.unpublished) tags.push('<span class="tag tag--unpub">未发布</span>');
+    if (r.free) tags.push('<span class="tag tag--free">免费</span>');
+    if (r.conflict) tags.push('<span class="tag tag--conflict">额度冲突</span>');
+
+    var meta = '<div class="model-meta">' +
+      '<span class="model-slug">' + esc(r.slug) + '</span>' +
+      (tags.length ? tags.join('') : '') +
+      '</div>';
+
+    var isOpen = !!state.open[r.slug];
+    var bar = r.valuePct == null ? '' :
+      '<span class="bar" aria-hidden="true"><span class="bar-fill" style="width:' + r.valuePct.toFixed(1) + '%"></span></span>';
+
+    var tr = '<tr data-slug="' + esc(r.slug) + '" data-rank="' + (idx + 1) + '"' + (isOpen ? ' class="is-open"' : '') + '>' +
+      '<td class="model-td">' +
+        '<span class="model-name">' + esc(r.name) + '</span>' +
+        meta +
+      '</td>' +
+      '<td class="hide-sm">' + (r.monthlyUsd == null ? dash(null) : fmtUsd(r.monthlyUsd)) + '</td>' +
+      '<td>' + (r.monthlyRequests == null ? dash(null) : '<span class="num-strong">' + fmt(Math.round(r.monthlyRequests)) + '</span>') + '</td>' +
+      '<td class="hide-md">' + (r.est5h == null ? dash(null) : fmt(r.est5h)) + '</td>' +
+      '<td class="hide-md">' + dash(perRequest(r.perRequest)) + '</td>' +
+      '<td>' + (r.overall == null ? dash(null) : '<span class="num-strong">' + r.overall.toFixed(1) + '</span>') + '</td>' +
+      '<td class="hide-sm">' + (r.backend == null ? dash(null) : r.backend.toFixed(0)) + '</td>' +
+      '<td class="hide-sm">' + (r.knowledge == null ? dash(null) : r.knowledge.toFixed(0)) + '</td>' +
+      '<td class="bar-cell">' + (r.value == null ? dash(null) : r.value.toFixed(0)) + bar + '</td>' +
+      '<td>' +
+        '<button type="button" class="expand-btn" data-expand="' + esc(r.slug) + '" ' +
+          'aria-expanded="' + (isOpen ? 'true' : 'false') + '" ' +
+          'aria-label="展开 ' + esc(r.name) + ' 的明细">' +
+          '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M3.5 1.5 7 5l-3.5 3.5"/></svg>' +
+        '</button>' +
+      '</td>' +
+    '</tr>';
+
+    if (isOpen) {
+      tr += '<tr class="detail-row"><td colspan="10">' + detailHtml(r) + '</td></tr>';
+    }
+    return tr;
+  }
+
+  function render() {
+    var rows = visibleRows();
+    var tbody = document.getElementById('tbody');
+    var empty = document.getElementById('empty');
+
+    if (!rows.length) {
+      tbody.innerHTML = '';
+      empty.hidden = false;
+    } else {
+      empty.hidden = true;
+      var html = '';
+      // 用 for 循环而不是 map+join，行数多时更省内存
+      for (var i = 0; i < rows.length; i++) html += rowHtml(rows[i], i);
+      tbody.innerHTML = html;
+    }
+
+    // 表头排序标记
+    var ths = document.querySelectorAll('thead th[data-key]');
+    for (var j = 0; j < ths.length; j++) {
+      var th = ths[j];
+      var key = th.getAttribute('data-key');
+      if (key === state.sortKey) {
+        th.setAttribute('aria-sort', state.sortDir === 1 ? 'ascending' : 'descending');
+        var mark = th.querySelector('.sort-mark');
+        if (!mark) {
+          mark = document.createElement('span');
+          mark.className = 'sort-mark';
+          th.appendChild(mark);
+        }
+        mark.textContent = state.sortDir === 1 ? '↑' : '↓';
+      } else {
+        th.setAttribute('aria-sort', 'none');
+        var m = th.querySelector('.sort-mark');
+        if (m) m.remove();
+      }
+    }
+
+    renderSummary();
+  }
+
+  /* ---------- 状态条 ---------- */
+
+  // 复用配额页的连接状态样式：conn--live / conn--demo / conn--error
+  var CONN_CLASS = {
+    loading: 'conn--demo',
+    live: 'conn--live',
+    partial: 'conn--demo',
+    offline: 'conn--error'
+  };
+
+  function setStatus(stateName, text) {
+    var el = document.getElementById('connState');
+    var cls = CONN_CLASS[stateName] || '';
+    el.className = 'conn' + (cls ? ' ' + cls : '');
+    document.getElementById('connLabel').textContent = text;
+  }
+
+  function setSync(text) {
+    var el = document.getElementById('lastSync');
+    if (el) el.textContent = text;
+  }
+
+  // topbar 右侧的短时间戳，与配额页同格式
+  function syncLabel(data) {
+    var when = data && data.builtAt ? new Date(data.builtAt) : null;
+    if (!when || isNaN(when)) return '无快照';
+    var diff = (Date.now() - when.getTime()) / 1000;
+    if (diff < 60) return '刚刚同步';
+    if (diff < 3600) return Math.floor(diff / 60) + ' 分钟前';
+    if (diff < 86400) return Math.floor(diff / 3600) + ' 小时前';
+    return Math.floor(diff / 86400) + ' 天前';
+  }
+
+  function setBuilt(data) {
+    var el = document.getElementById('built');
+    var when = data.builtAt ? new Date(data.builtAt) : null;
+    var parts = [];
+    if (when && !isNaN(when)) {
+      parts.push('快照 ' + when.toLocaleString('zh-CN', { hour12: false }));
+    }
+    if (data.fiveAxis && data.fiveAxis.batchId) {
+      parts.push('榜单批次 ' + String(data.fiveAxis.batchId).slice(0, 14));
+    }
+    el.textContent = parts.join(' · ') || '快照';
+  }
+
+  /* ---------- 实时拉取 ---------- */
+
+  var LIVE = {
+    api: 'https://opencode.ai/inference/go/v1/models',
+    latest: 'https://modeldial.com/api/v1/radar/latest.json'
+  };
+
+  // 把实时拿到的额度与清单合并进已有快照，缺字段的用快照补。
+  function mergeLiveApi(data, apiPayload) {
+    var list = (apiPayload && apiPayload.data) || [];
+    if (!list.length) return { changed: false };
+
+    var byId = {};
+    list.forEach(function (m) { if (m && m.id) byId[m.id] = m; });
+
+    var changed = 0;
+    data.goModels.forEach(function (m) {
+      var live = byId[m.slug];
+      if (!live) return;
+      var mu = (live.go && live.go.monthly_usage) || {};
+      var liveMonthly = mu.go == null ? null : mu.go;
+
+      if (liveMonthly != null && liveMonthly !== m.monthlyUsd) {
+        // 页面口径更自洽（5 小时次数与月额度同表），有快照比例时优先按比例换算；
+        // 没有快照比例才直接采用接口值。
+        if (m.reqPerUsd != null) {
+          m.monthlyUsdApi = m.monthlyUsd;
+          if (!m.conflict) {
+            var rebuilt = m.reqPerUsd * liveMonthly;
+            if (rebuilt > 0) {
+              m.monthlyRequests = rebuilt;
+              m.monthlyUsd = liveMonthly;
+              m.perDollarRequests = rebuilt / PLAN_PRICE;
+              changed++;
+            }
+          }
+        } else {
+          m.monthlyUsd = liveMonthly;
+        }
+      }
+
+      var cost = (live.cost && live.cost.text) || {};
+      if (cost.input && cost.input.price != null) m.priceIn = cost.input.price;
+      if (cost.output && cost.output.price != null) m.priceOut = cost.output.price;
+      if (live.limit) {
+        m.contextWindow = live.limit.context != null ? live.limit.context : m.contextWindow;
+        m.maxOutput = live.limit.output != null ? live.limit.output : m.maxOutput;
+      }
+      if (live.open_weights != null) m.openWeights = live.open_weights;
+    });
+
+    return { changed: changed > 0, count: changed };
+  }
+
+  function loadLive(silent) {
+    if (!silent) setStatus('loading', '正在拉取实时数据…');
+
+    function grab(url) {
+      var ac = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      var timer = ac ? setTimeout(function () { ac.abort(); }, 12000) : null;
+      return fetch(url, {
+        mode: 'cors',
+        signal: ac ? ac.signal : undefined,
+        headers: { accept: 'application/json' }
+      }).then(function (res) {
+        if (timer) clearTimeout(timer);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      }).catch(function (e) {
+        if (timer) clearTimeout(timer);
+        throw e;
+      });
+    }
+
+    var apiOk = false;
+    var latestOk = false;
+
+    Promise.all([
+      grab(LIVE.api).then(function (p) {
+        apiOk = true;
+        return mergeLiveApi(EMBEDDED, p);
+      }).catch(function () { return null; }),
+      grab(LIVE.latest).then(function (p) {
+        latestOk = true;
+        // 三轴榜单只影响「最近批次」的展示，不改变五轴综合分。
+        if (p && p.overallBatch) EMBEDDED.threeAxis.batchId = p.overallBatch.id || EMBEDDED.threeAxis.batchId;
+        return true;
+      }).catch(function () { return null; })
+    ]).then(function () {
+      if (apiOk || latestOk) {
+        state.rows = buildRows(EMBEDDED);
+        setSync('刚刚同步');
+        render();
+        var msg = apiOk && latestOk ? '实时数据已更新' : (apiOk ? '额度已实时更新，榜单用快照' : '榜单已更新，额度用快照');
+        setStatus(apiOk && latestOk ? 'live' : 'partial', msg);
+      } else {
+        setStatus('offline', '离线快照');
+      }
+    });
+  }
+
+  /* ---------- 事件 ---------- */
+
+  function onSort(key) {
+    if (state.sortKey === key) {
+      state.sortDir = -state.sortDir;
+    } else {
+      state.sortKey = key;
+      // 文本升序更自然，数值降序更自然
+      state.sortDir = key === 'name' ? 1 : -1;
+    }
+    render();
+  }
+
+  function bind() {
+    document.querySelector('thead').addEventListener('click', function (e) {
+      var th = e.target.closest('th[data-key]');
+      if (th) onSort(th.getAttribute('data-key'));
+    });
+
+    document.getElementById('tbody').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-expand]');
+      if (!btn) return;
+      var slug = btn.getAttribute('data-expand');
+      state.open[slug] = !state.open[slug];
+      render();
+      // 焦点跟随重新渲染后的按钮
+      var again = document.querySelector('[data-expand="' + slug.replace(/"/g, '\\"') + '"]');
+      if (again) again.focus();
+    });
+
+    document.getElementById('q').addEventListener('input', function (e) {
+      state.query = e.target.value;
+      render();
+    });
+
+    document.querySelector('.seg').addEventListener('click', function (e) {
+      var btn = e.target.closest('button[data-filter]');
+      if (!btn) return;
+      state.filter = btn.getAttribute('data-filter');
+      var all = this.querySelectorAll('button[data-filter]');
+      for (var i = 0; i < all.length; i++) {
+        all[i].setAttribute('aria-pressed', all[i] === btn ? 'true' : 'false');
+      }
+      render();
+    });
+
+    document.getElementById('refresh').addEventListener('click', function () {
+      loadLive(false);
+    });
+  }
+
+  /* ---------- 启动 ---------- */
+
+  function boot() {
+    var node = document.getElementById('ledger-data');
+    var raw = node ? node.textContent.trim() : '';
+    try {
+      EMBEDDED = raw ? JSON.parse(raw) : { goModels: [], fiveAxis: { byModel: {} }, threeAxis: {}, sources: {} };
+    } catch (err) {
+      EMBEDDED = { goModels: [], fiveAxis: { byModel: {} }, threeAxis: {}, sources: {} };
+      setStatus('offline', '内嵌数据损坏');
+    }
+
+    if (!EMBEDDED.goModels || !EMBEDDED.goModels.length) {
+      setStatus('offline', '无内嵌快照');
+      document.getElementById('empty').hidden = false;
+      document.getElementById('empty').textContent = '页面里还没有数据。运行 node refresh-data.mjs 生成快照，或点「重新拉取」试试实时接口。';
+      renderSummary();
+      bind();
+      return;
+    }
+
+    state.rows = buildRows(EMBEDDED);
+    setBuilt(EMBEDDED);
+    setSync(syncLabel(EMBEDDED));
+    render();
+    bind();
+    setStatus('loading', '快照已就绪');
+
+    // 打开即尝试实时刷新
+    loadLive(true);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+})();
+  </script>
+</body>
+</html>

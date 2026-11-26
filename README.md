@@ -1,6 +1,9 @@
-# OCG · OpenCode Go 配额仪表盘
+# OCG · OpenCode Go 控制台
 
-单文件静态仪表盘，读取 OpenCode Go 的三个用量窗口；本地 30 节点采样做历史图，按本窗口已过时间比例给出重置时用量预估，并把 5H→周、周→月的剩余预估折算叠加。无后端、无构建步骤。
+两页静态站点，无后端、无构建步骤：
+
+- **配额总览**（`index.html`）— 读取 OpenCode Go 的三个用量窗口；本地 30 节点采样做历史图，按本窗口已过时间比例给出重置时用量预估，并把 5H→周、周→月的剩余预估折算叠加。
+- **模型账本**（`models.html`）— Go 订阅下每个模型的月度调用次数 × ModelDial 五轴评分，按调用次数换算性价比。
 
 线上：<https://yuki-216.github.io/opencodepanel/> · 仓库：<https://github.com/yuki-216/opencodepanel>
 
@@ -56,9 +59,59 @@
 - 悬浮三个窗口图表的采样点：显示该点时间与已用百分比。
 - 100% 坐标只显示数字，不写「上限」。
 
+## 模型账本（models.html）
+
+第二个页面，统计 Go 订阅下每个模型的额度与性价比。与配额页共用同一套暗色主题和顶部导航，通过 `./` 与 `models.html` 互相跳转。
+
+### 数据来源
+
+| 数据 | 端点 | 浏览器可达 |
+|---|---|---|
+| 模型清单 + 月度额度 | `opencode.ai/inference/go/v1/models` | ✅ `ACAO: *`，免鉴权 |
+| 三轴评分 | `modeldial.com/api/v1/radar/latest.json` | ✅ `ACAO: *`，免鉴权 |
+| 每 5 小时调用次数 | `opencode.ai/console/go` | ❌ 无 CORS，需脚本抓 |
+| 五轴评分 | `modeldial.com/data/overview.json` | ❌ 无 CORS，需脚本抓 |
+
+页面打开时会实时拉取前两个；后两个用内嵌快照兜底，接口不可达时自动降级为「离线快照」。
+
+### 刷新快照
+
+```bash
+node refresh-models.mjs            # 抓线上并写回 models.html
+node refresh-models.mjs --out d.json   # 只导出 JSON
+```
+
+模型或价格变动后重跑一次即可，无需构建。也支持离线重建：
+
+```bash
+node refresh-models.mjs --api-file api.json --go-file go.html \
+  --radar-file radar.json --latest-file latest.json
+```
+
+### 性价比口径
+
+```
+月可调用 = 每 5 小时次数 × 5
+每次请求成本 = $10 ÷ 月可调用
+性价比 = 五轴综合分 × log₁₀(1 + 月可调用)
+```
+
+用对数是因为额度跨度接近三个数量级（490 → 226,500 次/月），直接相乘会让低价模型碾压一切。公式写在 `models.html` 的脚本里，改一处即可。
+
+### 数据标注
+
+- **同系列** — Go 上的模型与榜单记录版本不同（如 K2.7 Code 对 K2.8 Coding），分数仅供参考。
+- **未发布** — ModelDial 的 `hiddenModelIds` 里、榜单页不展示的配置，分数不参与最高分统计，排序时始终沉底。
+- **额度冲突** — 页面与 API 的月额度不一致（当前仅 `kimi-k3.1-pro`）。页面值与该表自身的 5 小时次数自洽，故采用页面值。
+
+### 许可
+
+五轴评分来自 [ModelDial Radar](https://modeldial.com/radar)，采用 CC BY 4.0 许可，本页已二次加工并在页脚署名。
+
 ## 安全说明
 
 - 页面无后端、无 analytics、无第三方脚本或 CDN；CSP 只允许连接 `https://opencode.ai`。
+- 模型账本页会额外请求 `https://modeldial.com`（公开评分数据，无需凭证）。
 - key 存在浏览器 localStorage/sessionStorage，同 origin 的脚本可读。建议：
   - 给面板使用独立子域（Cloudflare Pages/Netlify 每个项目一个子域），或自定义域名；
   - GitHub Pages 的 project site 共享 `username.github.io` origin，同账号的其他项目也能读到同一份 localStorage；
@@ -69,7 +122,9 @@
 
 ## 文件
 
-- `index.html` — 全部内容（HTML/CSS/JS 内联，单文件）。
+- `index.html` — 配额总览（HTML/CSS/JS 内联，单文件）。
+- `models.html` — 模型账本（HTML/CSS/JS + 内嵌快照数据，单文件）。
+- `refresh-models.mjs` — 重建 `models.html` 内嵌快照的 Node 脚本。
 - `README.md` — 本文件。
 
 ## 说明
